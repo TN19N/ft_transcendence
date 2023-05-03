@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  # Database ------------------------------------------------------------------------------------------------
+  database:
+    image: postgres:15-alpine
+    container_name: database
+    restart: unless-stopped
+    networks:
+      app-network:
+        ipv4_address: 13.37.0.2
+    volumes: [database-data:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    # tty: true # Debug
+    # stdin_open: true # Debug
+    # command: ["sh"] # Debug
+  # pgAdmin (debug) -------------------------------------------------------------------------------------------------
+  pgadmin:
+    depends_on: [database]
+    image: dpage/pgadmin4:7
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    networks:
+      app-network:
+        ipv4_address: 13.37.0.5
+    ports: ["8080:80"]
+    # tty: true # Debug
+    # stdin_open: true # Debug
+    # command: ["sh"] # Debug
+  # Backend -------------------------------------------------------------------------------------------------
+  backend:
+    depends_on: [database]
+    build:
+      context: ./backend
+    image: backend
+    container_name: backend
+    restart: unless-stopped
+    networks:
+      app-network:
+        ipv4_address: 13.37.0.3
+    tty: true # Debug
+    stdin_open: true # Debug
+    command: ["sh"] # Debug
+  # Frontend ------------------------------------------------------------------------------------------------
+  frontend:
+    depends_on: [backend]
+    build:
+      context: ./frontend
+    image: frontend
+    container_name: frontend
+    restart: unless-stopped
+    ports: ["443:443"]
+    networks:
+      app-network:
+        ipv4_address: 13.37.0.4
+    tty: true # Debug
+    stdin_open: true # Debug
+    command: ["sh"] # Debug
+
+volumes:
+  database-data:
+    name: database-data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATABASE_DIR}
+
+networks:
+  app-network:
+    name: app-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 13.37.0.0/29
+          gateway: 13.37.0.1
