@@ -6,9 +6,9 @@ END:=\033[0m
 UNAME:=$(shell uname)
 
 ifeq ($(UNAME), Linux)
-	ECHO:="echo -e"
+	ECHO:=echo -e
 else ifeq ($(UNAME), Darwin)
-	ECHO:="echo"
+	ECHO:=echo
 else
 	$(error $(UNAME) is not supported)
 endif
