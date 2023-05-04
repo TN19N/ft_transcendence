@@ -5,7 +5,7 @@ services:
   database:
     image: postgres:15-alpine
     container_name: database
-    restart: unless-stopped
+    restart: always
     networks:
       app-network:
         ipv4_address: 13.37.0.2
@@ -14,15 +14,24 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
+      PGDATA: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DATABASE_USER}", "-d", "${DATABASE_NAME}"]
+      interval: 5s
+      timeout: 5s
+      start_period: 2s
+      retries: 5
     # tty: true # Debug
     # stdin_open: true # Debug
     # command: ["sh"] # Debug
   # pgAdmin (debug) -------------------------------------------------------------------------------------------------
   pgadmin:
-    depends_on: [database]
+    depends_on:
+      database:
+        condition: service_healthy
     image: dpage/pgadmin4:7
     container_name: pgadmin
-    restart: unless-stopped
+    restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
@@ -30,35 +39,57 @@ services:
       app-network:
         ipv4_address: 13.37.0.5
     ports: ["8080:80"]
+    healthcheck:
+      test: ["CMD", "ping", "-c", "1", "localhost:80"]
+      interval: 3s
+      timeout: 3s
+      start_period: 1s
+      retries: 3
     # tty: true # Debug
     # stdin_open: true # Debug
     # command: ["sh"] # Debug
   # Backend -------------------------------------------------------------------------------------------------
   backend:
-    depends_on: [database]
+    depends_on:
+      database:
+        condition: service_healthy
     build:
       context: ./backend
     image: backend
     container_name: backend
-    restart: unless-stopped
+    restart: always
     networks:
       app-network:
         ipv4_address: 13.37.0.3
+    healthcheck:
+      test: ["CMD", "ping", "-c", "1", "google.com"] # change to real healthcheck
+      interval: 3s
+      timeout: 3s
+      start_period: 1s
+      retries: 3
     tty: true # Debug
     stdin_open: true # Debug
     command: ["sh"] # Debug
   # Frontend ------------------------------------------------------------------------------------------------
   frontend:
-    depends_on: [backend]
+    depends_on:
+      backend:
+        condition: service_healthy
     build:
       context: ./frontend
     image: frontend
     container_name: frontend
-    restart: unless-stopped
+    restart: always
     ports: ["443:443"]
     networks:
       app-network:
         ipv4_address: 13.37.0.4
+    healthcheck:
+      test: ["CMD", "ping", "-c", "1", "google.com"] # change to real healthcheck
+      interval: 3s
+      timeout: 3s
+      start_period: 1s
+      retries: 3
     tty: true # Debug
     stdin_open: true # Debug
     command: ["sh"] # Debug

@@ -17,7 +17,7 @@ build: init
 
 run: build
 	@ echo "${GREEN}Starting containers...${END}"
-	@ docker compose up --detach --renew-anon-volumes
+	@ docker compose up --detach
 	@ echo "${GREEN}Done!${END}"
 
 stop:
