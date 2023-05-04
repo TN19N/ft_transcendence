@@ -8,8 +8,3 @@ if [ $(uname) = "Darwin" ]; then
 elif [ $(uname) = "Linux" ]; then
     ./tools/envsubst-Linux-x86_64.exe < .env.template > .env
 fi
-
-# create nessasary folders
-export $(cat .env | grep -v "#" | xargs)
-
-mkdir -p $DATABASE_DIR

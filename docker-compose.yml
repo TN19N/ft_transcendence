@@ -96,12 +96,6 @@ services:
 
 volumes:
   database-data:
-    name: database-data
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATABASE_DIR}
 
 networks:
   app-network:

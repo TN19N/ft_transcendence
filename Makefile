@@ -22,7 +22,7 @@ init:
 
 build: init
 	@ $(ECHO) "${GREEN}Building containers...${END}"
-	@ docker compose build
+	@ docker compose build --no-cache
 	@ $(ECHO) "${GREEN}Done!${END}"
 
 run: build
