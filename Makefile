@@ -1,31 +1,41 @@
 # colors
-RED=\033[0;31m
-GREEN=\033[0;32m
-END=\033[0m
+RED:=\033[0;31m
+GREEN:=\033[0;32m
+END:=\033[0m
+
+UNAME:=$(shell uname)
+
+ifeq ($(UNAME), Linux)
+	ECHO:="echo -e"
+else ifeq ($(UNAME), Darwin)
+	ECHO:="echo"
+else
+	$(error $(UNAME) is not supported)
+endif
 
 all: run
 
 init:
-	@ echo "${GREEN}Initializing...${END}"
+	@ $(ECHO) "${GREEN}Initializing...${END}"
 	@ bash ./scripts/init.sh
-	@ echo "${GREEN}Done!${END}"
+	@ $(ECHO) "${GREEN}Done!${END}"
 
 build: init
-	@ echo "${GREEN}Building containers...${END}"
+	@ $(ECHO) "${GREEN}Building containers...${END}"
 	@ docker compose build
-	@ echo "${GREEN}Done!${END}"
+	@ $(ECHO) "${GREEN}Done!${END}"
 
 run: build
-	@ echo "${GREEN}Starting containers...${END}"
+	@ $(ECHO) "${GREEN}Starting containers...${END}"
 	@ docker compose up --detach
-	@ echo "${GREEN}Done!${END}"
+	@ $(ECHO) "${GREEN}Done!${END}"
 
 stop:
-	@ echo "${RED}Stopping containers...${END}"
+	@ $(ECHO) "${RED}Stopping containers...${END}"
 	@ bash ./scripts/clean.sh stop
-	@ echo "${RED}Done!${END}"
+	@ $(ECHO) "${RED}Done!${END}"
 
 clean:
-	@ echo "${RED}Cleaning up...${END}"
+	@ $(ECHO) "${RED}Cleaning up...${END}"
 	@ bash ./scripts/clean.sh clean
-	@ echo "${RED}Done!${END}"
+	@ $(ECHO) "${RED}Done!${END}"
