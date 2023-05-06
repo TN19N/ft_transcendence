@@ -15,14 +15,9 @@ endif
 
 all: run
 
-init:
-	@ $(ECHO) "${GREEN}Initializing...${END}"
-	@ bash ./scripts/init.sh
-	@ $(ECHO) "${GREEN}Done!${END}"
-
-build: init
+build:
 	@ $(ECHO) "${GREEN}Building containers...${END}"
-	@ docker compose build --no-cache
+	@ docker compose build
 	@ $(ECHO) "${GREEN}Done!${END}"
 
 run: build
@@ -32,10 +27,10 @@ run: build
 
 stop:
 	@ $(ECHO) "${RED}Stopping containers...${END}"
-	@ bash ./scripts/clean.sh stop
+	@ docker compose down
 	@ $(ECHO) "${RED}Done!${END}"
 
 clean:
 	@ $(ECHO) "${RED}Cleaning up...${END}"
-	@ bash ./scripts/clean.sh clean
+	@ docker compose down --volumes
 	@ $(ECHO) "${RED}Done!${END}"
