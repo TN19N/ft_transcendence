@@ -4,7 +4,7 @@ function _build {
 }
 
 function _start {
-    docker-compose --env-file .\.env up
+    docker-compose --env-file .\.env up -d
 }
 
 function _stop {
@@ -24,11 +24,11 @@ function _fclean {
 
 Switch ( $args[0] ) {
 
-    "stop" { _stop }
-    "clean" { _clean }
-    "fclean" { _clean; _fclean }
-    "build" { _build }
-    "start" { _build; _start }
-    Default { Write-Host "Useg: $($MyInvocation.MyCommand.Name) [ start | stop | clean | fclean ]" }
+    "stop"      { _stop }
+    "clean"     { _clean }
+    "fclean"    { _clean; _fclean }
+    "build"     { _build }
+    "start"     { _build; _start }
+    Default     { Write-Host "Useg: $($MyInvocation.MyCommand.Name) [ start | stop | clean | fclean ]" }
 
 }
