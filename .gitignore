@@ -1,2 +1,2 @@
-.env
+#.env (uncomment for production)
 .DS_Store
