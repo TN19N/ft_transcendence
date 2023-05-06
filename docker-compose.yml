@@ -67,9 +67,9 @@ services:
       timeout: 3s
       start_period: 1s
       retries: 3
-    tty: true # Debug
-    stdin_open: true # Debug
-    command: ["sh"] # Debug
+    # tty: true # Debug
+    # stdin_open: true # Debug
+    # command: ["sh"] # Debug
   # Frontend ------------------------------------------------------------------------------------------------
   frontend:
     depends_on:
@@ -96,6 +96,7 @@ services:
 
 volumes:
   database-data:
+    name: database-data
 
 networks:
   app-network:
