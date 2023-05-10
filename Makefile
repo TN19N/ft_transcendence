@@ -16,21 +16,21 @@ endif
 all: run
 
 build:
-	@ $(ECHO) "${GREEN}Building containers...${END}"
+	@ $(ECHO) "$(GREEN)Building containers...$(END)"
 	@ docker compose build
-	@ $(ECHO) "${GREEN}Done!${END}"
+	@ $(ECHO) "$(GREEN)Done!$(END)"
 
 run: build
-	@ $(ECHO) "${GREEN}Starting containers...${END}"
+	@ $(ECHO) "$(GREEN)Starting containers...$(END)"
 	@ docker compose up --detach
-	@ $(ECHO) "${GREEN}Done!${END}"
+	@ $(ECHO) "$(GREEN)Done!$(END)"
 
 stop:
-	@ $(ECHO) "${RED}Stopping containers...${END}"
-	@ docker compose down
-	@ $(ECHO) "${RED}Done!${END}"
+	@ $(ECHO) "$(RED)Stopping containers...$(END)"
+	@ docker compose stop
+	@ $(ECHO) "$(RED)Done!$(END)"
 
 clean:
-	@ $(ECHO) "${RED}Cleaning up...${END}"
-	@ docker compose down --volumes
-	@ $(ECHO) "${RED}Done!${END}"
+	@ $(ECHO) "$(RED)Cleaning up...$(END)"
+	@ docker compose  down --volumes
+	@ $(ECHO) "$(RED)Done!$(END)"

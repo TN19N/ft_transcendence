@@ -1,2 +1,2 @@
-#.env (uncomment for production)
 .DS_Store
+.vscode

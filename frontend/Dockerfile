@@ -1,3 +1,1 @@
-FROM nginx:1-alpine
-
-EXPOSE 443
+FROM nginx:1
