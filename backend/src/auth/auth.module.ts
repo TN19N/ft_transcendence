@@ -6,7 +6,13 @@ import { JwtStrategy, Intra42Strategy } from "./strategy";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
 @Module({
-    imports: [JwtModule.register({})],
+    imports: [JwtModule.registerAsync({
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: async (configService: ConfigService) => ({
+            secret: configService.get('JWT_SECRET'),
+        }),
+    })],
     controllers: [AuthController],
     providers: [AuthService, JwtStrategy, Intra42Strategy],
 })

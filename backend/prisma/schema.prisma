@@ -10,4 +10,6 @@ datasource db {
 model User {
   id Int @id
   username String @unique
+
+  isTwoFactorAuthonticationEnabled Boolean @default(false)
 }

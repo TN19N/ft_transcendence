@@ -10,12 +10,7 @@ export class AuthService {
         private configService: ConfigService,
     ) {}
 
-    async login(user: User) {
-        return {
-            access_token: this.jwtService.sign(
-                { sub: user.id },
-                { secret: this.configService.get('JWT_SECRET'), },
-            )
-        };
+    async getLoginCookie(user: User) {
+        return `Authentication=${this.jwtService.sign({ sub: user.id })}; HttpOnly; Path=/')}`
     }
 }

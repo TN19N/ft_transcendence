@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtGuard } from 'src/auth/guard';
 
@@ -8,8 +8,8 @@ import { JwtGuard } from 'src/auth/guard';
 export class UserController {
     constructor(private userService: UserService) {}
 
-    @Get()
-    async getUser() {
-        return { message: 'User' };
+    @Post('upload')
+    async uploadFile() {
+        
     }
 }
