@@ -1,108 +1,69 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  # Database ------------------------------------------------------------------------------------------------
+  # Database -------------------------------------------------------------------------------------------------
   database:
     image: postgres:15-alpine
-    container_name: database
+    container_name: $DATABASE_HOST
     restart: always
-    networks:
-      app-network:
-        ipv4_address: 13.37.0.2
+    expose: [$DATABASE_PORT]
+    ports: [$DATABASE_PORT:$DATABASE_PORT] # for development only
     volumes: [database-data:/var/lib/postgresql/data]
+    networks: [app-network]
     environment:
-      POSTGRES_USER: ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_DB: ${DATABASE_NAME}
-      PGDATA: /var/lib/postgresql/data
+      POSTGRES_USER: $DATABASE_USER
+      POSTGRES_PASSWORD: $DATABASE_PASSWORD
+      POSTGRES_DB: $DATABASE_NAME
+      PGPORT: $DATABASE_PORT
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${DATABASE_USER}", "-d", "${DATABASE_NAME}"]
-      interval: 5s
-      timeout: 5s
-      start_period: 2s
+      test: pg_isready -U $DATABASE_USER -d $DATABASE_NAME
+      interval: 1s
       retries: 5
-    # tty: true # Debug
-    # stdin_open: true # Debug
-    # command: ["sh"] # Debug
-  # pgAdmin (debug) -------------------------------------------------------------------------------------------------
-  pgadmin:
+      start_period: 2s
+  # pgAdmin -------------------------------------------------------------------------------------------------
+  database-client:
     depends_on:
       database:
         condition: service_healthy
-    image: dpage/pgadmin4:7
-    container_name: pgadmin
+    image: dbeaver/cloudbeaver:23.0.4
+    container_name: database-client
     restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    networks:
-      app-network:
-        ipv4_address: 13.37.0.5
-    ports: ["8080:80"]
-    healthcheck:
-      test: ["CMD", "ping", "-c", "1", "localhost:80"]
-      interval: 3s
-      timeout: 3s
-      start_period: 1s
-      retries: 3
-    # tty: true # Debug
-    # stdin_open: true # Debug
-    # command: ["sh"] # Debug
+    expose: [8978]
+    ports: [8978:8978]
+    networks: [app-network]
+    volumes: [database-client-data:/opt/cloudbeaver/data]
   # Backend -------------------------------------------------------------------------------------------------
   backend:
     depends_on:
       database:
         condition: service_healthy
-    build:
-      context: ./backend
+    build: ./backend
     image: backend
     container_name: backend
     restart: always
-    networks:
-      app-network:
-        ipv4_address: 13.37.0.3
-    healthcheck:
-      test: ["CMD", "ping", "-c", "1", "google.com"] # change to real healthcheck
-      interval: 3s
-      timeout: 3s
-      start_period: 1s
-      retries: 3
-    # tty: true # Debug
-    # stdin_open: true # Debug
-    # command: ["sh"] # Debug
+    networks: [app-network]
+    expose: [$BACKEND_PORT]
+    ports: [$BACKEND_PORT:$BACKEND_PORT]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: "postgresql://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT/$DATABASE_NAME?schema=public"
   # Frontend ------------------------------------------------------------------------------------------------
   frontend:
-    depends_on:
-      backend:
-        condition: service_healthy
-    build:
-      context: ./frontend
+    depends_on: [backend]
+    build: ./frontend
     image: frontend
     container_name: frontend
     restart: always
-    ports: ["443:443"]
-    networks:
-      app-network:
-        ipv4_address: 13.37.0.4
-    healthcheck:
-      test: ["CMD", "ping", "-c", "1", "google.com"] # change to real healthcheck
-      interval: 3s
-      timeout: 3s
-      start_period: 1s
-      retries: 3
-    tty: true # Debug
-    stdin_open: true # Debug
-    command: ["sh"] # Debug
+    networks: [app-network]
+    expose: [80]
+    ports: [80:80]
 
 volumes:
   database-data:
     name: database-data
+  database-client-data:
+    name: database-client-data
 
 networks:
   app-network:
     name: app-network
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 13.37.0.0/29
-          gateway: 13.37.0.1

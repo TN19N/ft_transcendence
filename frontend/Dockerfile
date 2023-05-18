@@ -1,3 +1,3 @@
 FROM nginx:1-alpine
 
-EXPOSE 443
+RUN apk update && apk upgrade --no-cache

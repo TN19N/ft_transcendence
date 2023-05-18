@@ -1,6 +1,6 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
-EXPOSE 3000
+RUN apk update && apk upgrade --no-cache
 
 WORKDIR /app
 
@@ -8,4 +8,4 @@ COPY . .
 
 RUN npm install
 
-CMD ["npm", "run", "start"]
+CMD npm run migrate:start
