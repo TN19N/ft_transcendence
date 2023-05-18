@@ -8,8 +8,8 @@ import { DatabaseService } from "./../../database/database.service";
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     constructor(
         configService: ConfigService,
-        private dataService: DatabaseService
-        ) {
+        private databaseService: DatabaseService
+    ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             secretOrKey: configService.get('JWT_SECRET'),
@@ -17,10 +17,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     async validate(payload: { sub: number }) {
-        return await this.dataService.user.findUnique({
+        return this.databaseService.user.findUnique({
             where: {
                 id: payload.sub
             }
-        });
+        })
     }
 }

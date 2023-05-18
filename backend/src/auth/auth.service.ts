@@ -1,13 +1,21 @@
 import { Injectable } from "@nestjs/common";
-import { DatabaseService } from "./../database/database.service";
-import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { User } from "@prisma/client";
 
 @Injectable()
 export class AuthService {
     constructor(
-        private databaseService: DatabaseService,
         private jwtService: JwtService,
-        private configService: ConfigService
-        ) {}
+        private configService: ConfigService,
+    ) {}
+
+    async login(user: User) {
+        return {
+            access_token: this.jwtService.sign(
+                { sub: user.id },
+                { secret: this.configService.get('JWT_SECRET'), },
+            )
+        };
+    }
 }

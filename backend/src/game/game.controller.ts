@@ -1,7 +1,9 @@
 import { Controller, UseGuards } from '@nestjs/common';
-import { JwtGuard } from '../auth/guard';
+import { GameService } from './game.service';
+import { JwtGuard } from 'src/auth/guard';
 
-@UseGuards(JwtGuard)
 @Controller('game')
+@UseGuards(JwtGuard)
 export class GameController {
+    constructor(private gameService: GameService) {}
 }

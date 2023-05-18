@@ -17,26 +17,21 @@ services:
       PGPORT: $DATABASE_PORT
     healthcheck:
       test: pg_isready -U $DATABASE_USER -d $DATABASE_NAME
-      interval: 2s
-      retries: 2
-      start_period: 1s
+      interval: 1s
+      retries: 5
+      start_period: 2s
   # pgAdmin -------------------------------------------------------------------------------------------------
   database-client:
     depends_on:
       database:
         condition: service_healthy
     image: dbeaver/cloudbeaver:23.0.4
-    container_name: $DATABASE_CLIENT_HOST
+    container_name: database-client
     restart: always
-    expose: [$DATABASE_CLIENT_PORT]
-    ports: [$DATABASE_CLIENT_PORT:$DATABASE_CLIENT_PORT]
+    expose: [8978]
+    ports: [8978:8978]
     networks: [app-network]
     volumes: [database-client-data:/opt/cloudbeaver/data]
-    healthcheck:
-      test: curl --fail http://localhost:$DATABASE_CLIENT_PORT
-      interval: 2s
-      retries: 2
-      start_period: 1s
   # Backend -------------------------------------------------------------------------------------------------
   backend:
     depends_on:
@@ -44,37 +39,24 @@ services:
         condition: service_healthy
     build: ./backend
     image: backend
-    container_name: $BACKEND_HOST
+    container_name: backend
     restart: always
     networks: [app-network]
     expose: [$BACKEND_PORT]
     ports: [$BACKEND_PORT:$BACKEND_PORT]
+    env_file: [.env]
     environment:
-      BACKEND_PORT: $BACKEND_PORT
-      DATABASE_URL: "postgres://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT/$DATABASE_NAME"
-      JWT_SECRET: $JWT_SECRET
-    healthcheck:
-      test: npm run test:e2e
-      interval: 2s
-      retries: 2
-      start_period: 1s
+      DATABASE_URL: "postgresql://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT/$DATABASE_NAME?schema=public"
   # Frontend ------------------------------------------------------------------------------------------------
   frontend:
-    depends_on:
-      backend:
-        condition: service_healthy
+    depends_on: [backend]
     build: ./frontend
     image: frontend
-    container_name: $FRONTEND_HOST
+    container_name: frontend
     restart: always
     networks: [app-network]
-    expose: [$FRONTEND_PORT]
-    ports: [$FRONTEND_PORT:$FRONTEND_PORT]
-    healthcheck:
-      test: curl --fail www.google.com # TODO: add real test
-      interval: 2s
-      retries: 2
-      start_period: 1s
+    expose: [80]
+    ports: [80:80]
 
 volumes:
   database-data:

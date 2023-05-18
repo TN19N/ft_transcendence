@@ -12,3 +12,6 @@
 
 # IDE - VSCode
 .vscode
+
+# .env
+.env
