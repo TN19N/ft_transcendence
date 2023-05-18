@@ -2,13 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { Strategy } from "passport-42";
-import { DatabaseService } from "src/database/database.service";
+import { AuthService } from "../auth.service";
 
 @Injectable()
 export class Intra42Strategy extends PassportStrategy(Strategy, 'intra42') {
     constructor(
-        private configService: ConfigService,
-        private databaseService: DatabaseService
+        configService: ConfigService,
+        private authService: AuthService,
     ) {
         super({
             clientID: configService.get('INTRA_42_CLIENT_ID'),
@@ -19,21 +19,6 @@ export class Intra42Strategy extends PassportStrategy(Strategy, 'intra42') {
     }
 
     async validate(access_token: string, refresh_token: string, profile: any) {
-        const user = await this.databaseService.user.findUnique({
-            where: {
-                id: parseInt(profile.id),
-            }
-        });
-
-        if (user) {
-            return user;
-        } else {
-            return await this.databaseService.user.create({
-                data: {
-                    id: parseInt(profile.id),
-                    username: profile.username,
-                },
-            });
-        }
+        return this.authService.validateUser(profile);
     }
 }
