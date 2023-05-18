@@ -18,5 +18,8 @@ lerna-debug.log*
 # .env
 .env
 
-# prisma migration
-/prisma/migrations
+# prisma migrations
+./prisma/migrations
+
+# images
+./upload/*.jpg

@@ -22,4 +22,7 @@ Dockerfile
 .env
 
 # prisma migrations
-prisma/migrations
+./prisma/migrations
+
+# images
+./upload/*.jpg
