@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Res, UseGuards} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Intra42Guard } from './guard';
 import { GetUser } from './decorator';
@@ -14,6 +14,12 @@ export class AuthController {
     @UseGuards(Intra42Guard)
     async login(@GetUser() user: User, @Res() response: Response) {
         response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user));
-        return user;
+        return response.send(user);
+    }
+
+    @Post('logout')
+    async logout(@Res() response: Response) {
+        response.setHeader('Set-Cookie', 'Authentication=; HttpOnly; Path=/; Max-Age=0');
+        return response.sendStatus(HttpStatus.OK);
     }
 }

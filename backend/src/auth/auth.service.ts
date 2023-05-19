@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { User } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
@@ -10,17 +9,16 @@ import axios from 'axios';
 export class AuthService {
     constructor(
         private jwtService: JwtService,
-        private configService: ConfigService,
         private databaseService: DatabaseService,
     ) {}
 
     async getLoginCookie(user: User) {
-        return `Authentication=${this.jwtService.sign({ sub: user.id })}; HttpOnly; Path=/')}`
+        return `Authentication=${this.jwtService.sign({ sub: user.id })}; HttpOnly; Path=/')}`;
+    }
+
     async validateUser(profile: any) {
         const user = await this.databaseService.user.findUnique({
-            where: {
-                id: parseInt(profile.id),
-            }
+            where: { id: parseInt(profile.id) }
         });
 
         if (user) {
@@ -39,14 +37,5 @@ export class AuthService {
                 },
             });
         }
-    }
-
-    async login(user: User) {
-        return {
-            access_token: this.jwtService.sign(
-                { sub: user.id },
-                { secret: this.configService.get('JWT_SECRET'), },
-            )
-        };
     }
 }

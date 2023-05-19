@@ -3,6 +3,8 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtModule } from "@nestjs/jwt";
 import { JwtStrategy, Intra42Strategy } from "./strategy";
+import { ConfigModule } from "../config/config.module";
+import { ConfigService } from "@nestjs/config";
 
 @Module({
     imports: [JwtModule.registerAsync({
