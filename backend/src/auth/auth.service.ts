@@ -13,7 +13,7 @@ export class AuthService {
     ) {}
 
     async getLoginCookie(user: User) {
-        return `Authentication=${this.jwtService.sign({ sub: user.id })}; HttpOnly; Path=/')}`;
+        return `Authentication=${this.jwtService.sign({ sub: user.id })}; Path=/`;
     }
 
     async validateUser(profile: any) {

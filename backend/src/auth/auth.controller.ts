@@ -1,6 +1,6 @@
-import { Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Res, UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Intra42Guard } from './guard';
+import { Intra42Guard, JwtGuard } from './guard';
 import { GetUser } from './decorator';
 import { User } from '@prisma/client';
 import { Response } from 'express';
@@ -17,9 +17,11 @@ export class AuthController {
         return response.send(user);
     }
 
-    @Post('logout')
+    @Get('logout')
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(JwtGuard)
     async logout(@Res() response: Response) {
-        response.setHeader('Set-Cookie', 'Authentication=; HttpOnly; Path=/; Max-Age=0');
+        response.clearCookie('Authentication');
         return response.sendStatus(HttpStatus.OK);
     }
 }
