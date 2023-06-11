@@ -6,7 +6,7 @@ import { DatabaseService } from "./../../database/database.service";
 import { Request } from "express";
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class Jwt2faStrategy extends PassportStrategy(Strategy, 'jwt2fa') {
     constructor(
         configService: ConfigService,
         private databaseService: DatabaseService
@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     async validate(payload: { sub: number, tfa: boolean}) {
-        if (payload.tfa == false) {
+        if (payload.tfa == true) {
             return this.databaseService.user.findUnique({
                 where: {
                     id: payload.sub

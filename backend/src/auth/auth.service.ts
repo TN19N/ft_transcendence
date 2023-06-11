@@ -12,8 +12,8 @@ export class AuthService {
         private databaseService: DatabaseService,
     ) {}
 
-    async getLoginCookie(user: User) {
-        return `Authentication=${this.jwtService.sign({ sub: user.id })}; Path=/`;
+    async getLoginCookie(user: User, tfa: boolean) {
+        return `Authentication=${await this.jwtService.signAsync({ sub: user.id, tfa: tfa })}; Path=/`;
     }
 
     async validateUser(profile: any) {

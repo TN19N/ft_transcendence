@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
-import * as Joi from '@hapi/joi';
+import * as Joi from 'joi';
 
 @Module({
     imports: [
@@ -8,6 +8,7 @@ import * as Joi from '@hapi/joi';
             validationSchema: Joi.object({
                 DATABASE_URL: Joi.string().required(),
                 JWT_SECRET: Joi.string().required(),
+                JWT_SECRET_2FA: Joi.string().required(),
                 BACKEND_PORT: Joi.number().required(),
                 INTRA_42_CLIENT_ID: Joi.string().required(),
                 INTRA_42_CLIENT_SECRET: Joi.string().required(),
