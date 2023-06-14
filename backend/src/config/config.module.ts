@@ -8,7 +8,6 @@ import * as Joi from 'joi';
             validationSchema: Joi.object({
                 DATABASE_URL: Joi.string().required(),
                 JWT_SECRET: Joi.string().required(),
-                JWT_SECRET_2FA: Joi.string().required(),
                 BACKEND_PORT: Joi.number().required(),
                 INTRA_42_CLIENT_ID: Joi.string().required(),
                 INTRA_42_CLIENT_SECRET: Joi.string().required(),

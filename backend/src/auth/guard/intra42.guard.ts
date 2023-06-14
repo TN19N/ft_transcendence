@@ -6,8 +6,8 @@ export class Intra42Guard extends AuthGuard('intra42') {
         super();
     }
 
-    handleRequest(err: any, user: any, info: any, context: ExecutionContext) {        
-        if (err) {
+    handleRequest(err: any, user: any, info: any, context: ExecutionContext) {                
+        if (err || !user) {
             throw new UnauthorizedException('Unauthorized');
         }
 

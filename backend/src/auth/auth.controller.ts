@@ -1,45 +1,50 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UnauthorizedException, UseGuards} from '@nestjs/common';
+import { 
+    Body, 
+    Controller, 
+    Get, 
+    HttpCode, 
+    HttpStatus, 
+    Post, 
+    Res, 
+    UnauthorizedException, 
+    UseGuards
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Intra42Guard, JwtGuard } from './guard';
 import { GetUser } from './decorator';
 import { User } from '@prisma/client';
 import { Response } from 'express';
 import { Jwt2faGuard } from './guard/jwt2fa.guard';
-import { TwoFaDto } from './dto';
-import { authenticator } from 'otplib';
+import { TwoFactorAuthenticationCodeDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
     constructor(private authService: AuthService) {}
 
     @Get('login')
+    @HttpCode(HttpStatus.CREATED)
     @UseGuards(Intra42Guard)
-    async login(@GetUser() user: User, @Res() response: Response) {
-        response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user, user.isTwoFactorAuthenticationEnabled));
-        user.twoFactorAuthenticationSecret = null;
-        return response.send(user);
+    async login(@GetUser() user: User, @Res({ passthrough: true }) response: Response) {
+        response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user));
     }
 
     @Post('2fa')
+    @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(Jwt2faGuard)
-    async validate2fa(@GetUser() user: User, @Body() twoFa: TwoFaDto, @Res() response: Response) {
-        const isValid : boolean = authenticator.verify({
-            token: twoFa.twoFaCode,
-            secret: user.twoFactorAuthenticationSecret!,
-        });
+    async validateTwoFactorAuthenticationCode(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto, @Res({ passthrough: true }) response: Response) {
+        const isValid : boolean = await this.authService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
 
         if (isValid) {
             response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user, false));
-            response.sendStatus(HttpStatus.OK)
         } else {
-            throw new UnauthorizedException('Wrong 2fa code!');
+            throw new UnauthorizedException('Wrong two factor authentication code');
         }
     }
 
     @Post('logout')
+    @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(JwtGuard)
-    async logout(@Res() response: Response) {
+    async logout(@Res({passthrough: true}) response: Response) {
         response.clearCookie('Authentication');
-        response.sendStatus(HttpStatus.OK);
     }
 }

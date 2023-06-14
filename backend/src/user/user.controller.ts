@@ -3,77 +3,62 @@ import {
     Controller, 
     Get, 
     HttpCode, 
-    HttpStatus, 
+    HttpStatus,
     Post, 
     Res, 
     UnauthorizedException, 
-    UnsupportedMediaTypeException, 
-    UploadedFile, 
     UseGuards, 
-    UseInterceptors 
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtGuard } from 'src/auth/guard';
 import { GetUser } from '../auth/decorator';
 import { User } from '@prisma/client';
-import { TwoFaDto } from 'src/auth/dto';
-import { Express, Response } from 'express';
-import { FileInterceptor } from '@nestjs/platform-express';
-import * as fs from 'fs';
+import { TwoFactorAuthenticationCodeDto } from 'src/auth/dto';
+import { Response } from 'express';
+import { AuthService } from './../auth/auth.service';
 
 @Controller('user')
 @UseGuards(JwtGuard)
 export class UserController {
-    constructor(private userService: UserService) {}
+    constructor(
+        private userService: UserService,
+        private authService: AuthService,
+    ) {}
 
-    @Post('upload')
-    @HttpCode(HttpStatus.CREATED)
-    @UseInterceptors(FileInterceptor('file', {
-        fileFilter: (req, file, callback) => {
-            if (file.mimetype == 'image/jpeg') {
-                callback(null, true);
-            } else {
-                callback(null, false);
-            }
-        }
-    }))
-    async uploadFile(@UploadedFile() file: Express.Multer.File, @GetUser() user: User) {
-        if (file) {
-            fs.writeFileSync(`${__dirname}/../../upload/${user.id}.jpg`, file.buffer);
-            return 'File uploaded successfully';
-        } else {
-            throw new UnsupportedMediaTypeException('File type not supported')
-        }
+    // this is for testing purpose
+    @Post('delete')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async delete() {
+        await this.userService.deleteAll();
     }
 
-    @Get('download')
+    @Get('avatar')
     @HttpCode(HttpStatus.OK)
     async download(@GetUser() user: User, @Res() response: Response) {
-        response.download(`${__dirname}/../../upload/${user.id}.jpg`)
+        response.download(`${__dirname}/../../upload/${user.id}.png`);
     }
 
-    @Post('switch2fa')
+    @Post('turnOn2fa')
     @HttpCode(HttpStatus.CREATED)
-    async switch2fa(@GetUser() user: User) {
-        return this.userService.switch2fa(user);
+    async turnOnTwoFactorAuthentication(@GetUser() user: User) {
+        return await this.userService.turnOnTwoFactorAuthentication(user);
+    }
+
+    @Post('turnOff2fa')
+    @HttpCode(HttpStatus.CREATED)
+    async turnOffTwoFactorAuthentication(@GetUser() user: User) {
+        await this.userService.turnOffTwoFactorAuthentication(user);
     }
 
     @Post('enable2fa')
     @HttpCode(HttpStatus.CREATED)
-    async enable2FA(@GetUser() user: User, @Body() twoFaDto: TwoFaDto) {
-        if (user.twoFactorAuthenticationSecret != null && user.isTwoFactorAuthenticationEnabled == false) {
-            const result: boolean = await this.userService.enable2fa(user, twoFaDto.twoFaCode);
+    async enable2FA(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto) {
+        const isValid : boolean = await this.authService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
 
-            if (result == false) {
-                throw new UnauthorizedException('wrong 2fa code!');
-            }
+        if (isValid) {
+            await this.userService.enableTwoFactorAuthentication(user);
+        } else {
+            throw new UnauthorizedException('Wrong two factor authentication code');
         }
-    }
-
-    @Get('me')
-    @HttpCode(HttpStatus.OK)
-    async me(@GetUser() user: User) {
-        user.twoFactorAuthenticationSecret = null;
-        return user;
     }
 }

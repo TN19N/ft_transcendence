@@ -4,6 +4,7 @@ import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { DatabaseService } from "./../../database/database.service";
 import { Request } from "express";
+import { User } from "@prisma/client";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -13,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromExtractors([
-                (request: Request) => {
+                (request: Request): string | null => {
                     return request?.cookies?.Authentication;
                 }
             ]),
@@ -21,13 +22,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
     }
 
-    async validate(payload: { sub: number, tfa: boolean}) {
+    async validate(payload: { sub: string, tfa: boolean }): Promise<User | null> {
         if (payload.tfa == false) {
-            return this.databaseService.user.findUnique({
-                where: {
-                    id: payload.sub
-                }
+            return await this.databaseService.user.findUnique({
+                where: { id: payload.sub }
             });
+        } else {
+            return null;
         }
     }
 }
