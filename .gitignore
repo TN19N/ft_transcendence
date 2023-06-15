@@ -1,17 +1,17 @@
 # OS
-.DS_Store
+/.DS_Store
 
 # IDEs and editors
 /.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+/.project
+/.classpath
+/.c9/
+/*.launch
+/.settings/
+/*.sublime-workspace
 
 # IDE - VSCode
-.vscode
+/.vscode
 
 # .env
-.env
+/.env
