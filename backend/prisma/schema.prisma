@@ -21,6 +21,9 @@ model User {
 
   sensitiveData UserSensitiveData @relation(fields: [sensitiveDataId], references: [id])
   sensitiveDataId String @unique
+
+  friends User[] @relation("friends")
+  friendOf User[] @relation("friends")
 }
 
 model UserProfile {

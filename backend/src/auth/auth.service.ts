@@ -53,7 +53,8 @@ export class AuthService {
 
             const response = await axios.get(profile._json.image.link, { responseType: 'arraybuffer' });
             const buffer = Buffer.from(response.data, 'binary');
-            await fs.promises.writeFile('./upload/' + user.id + '.png', buffer);
+
+            await fs.promises.writeFile('./upload/' + user.id, buffer);
 
             return user;
         }

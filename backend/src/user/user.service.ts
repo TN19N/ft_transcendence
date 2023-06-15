@@ -1,8 +1,10 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
+import { UserProfileDto } from './dto';
+import { isInstance } from 'class-validator';
 
 @Injectable()
 export class UserService {
@@ -18,6 +20,24 @@ export class UserService {
         await this.databaseService.userSensitiveData.deleteMany();
     }
 
+    async getUserById(userId: string) : Promise<User> {
+        const user : User | null = await this.databaseService.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                createdAt: true,
+                profileId: true,
+                preferencesId: true,
+            }
+        }) as User | null;
+
+        if (user) {
+            return user;
+        } else {
+            throw new NotFoundException('User not found');
+        }
+    }
+
     async getUserProfile(profileId: string) : Promise<UserProfile> {
         const userProfile : UserProfile | null = await this.databaseService.userProfile.findUnique({
             where: { id: profileId },
@@ -27,6 +47,25 @@ export class UserService {
             return userProfile;
         } else {
             throw new NotFoundException('User profile not found');
+        }
+    }
+
+    async postUserProfile(user: User, userProfileDto: UserProfileDto) {
+        try {
+            await this.databaseService.userProfile.update({
+                where: { id: user.profileId },
+                data: {
+                    name: userProfileDto.name,
+                }
+            })
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new ConflictException('User name already exists');
+                }
+            }
+
+            throw new InternalServerErrorException('failed to update the user data.');
         }
     }
 
