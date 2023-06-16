@@ -1,15 +1,17 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { UserProfileDto } from './dto';
-import { isInstance } from 'class-validator';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
     constructor(
         private databaseService: DatabaseService,
+        private configService: ConfigService,
     ) {}
 
     // for testing purposes delete all users
@@ -20,14 +22,29 @@ export class UserService {
         await this.databaseService.userSensitiveData.deleteMany();
     }
 
-    async getUserById(userId: string) : Promise<User> {
+    // for testing purposes add random user
+    async addRandomUser() {
+        await this.databaseService.user.create({
+            data: {
+                intraId: Math.floor(Math.random() * 1000000),
+                profile: {
+                    create: {
+                        name: `test${Math.floor(Math.random() * 1000000)}`,
+                    }
+                },
+                preferences: { create: {} },
+                sensitiveData: { create: {} },
+            }
+        });
+    }
+
+    async getUserById(userId: string, TheOwner: boolean) : Promise<User> {
         const user : User | null = await this.databaseService.user.findUnique({
             where: { id: userId },
             select: {
                 id: true,
-                createdAt: true,
                 profileId: true,
-                preferencesId: true,
+                preferencesId: TheOwner,
             }
         }) as User | null;
 
@@ -50,7 +67,7 @@ export class UserService {
         }
     }
 
-    async postUserProfile(user: User, userProfileDto: UserProfileDto) {
+    async postUserProfile(user: User, userProfileDto: UserProfileDto): Promise<void> {
         try {
             await this.databaseService.userProfile.update({
                 where: { id: user.profileId },
@@ -98,15 +115,28 @@ export class UserService {
         const userProfile: UserProfile = await this.getUserProfile(user.profileId);
 
         let secret: string;
-        if (userSensitiveData.twoFactorAuthenticationSecret) {
-            secret = userSensitiveData.twoFactorAuthenticationSecret;
+        if (userSensitiveData.twoFactorAuthenticationSecret && userSensitiveData.iv) {
+            let {twoFactorAuthenticationSecret, iv} = userSensitiveData;
+
+            const ivBuffer = Buffer.from(iv, 'hex');
+            const decipher = createDecipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, ivBuffer);
+
+            secret = decipher.update(twoFactorAuthenticationSecret, 'hex', 'utf-8') + decipher.final('utf-8');
         } else {
             secret = authenticator.generateSecret();
+
+            const iv = randomBytes(16);
+            const cipher = createCipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, iv);
+
             await this.databaseService.userSensitiveData.update({
                 where: { id: user.sensitiveDataId },
-                data: { twoFactorAuthenticationSecret: secret },
+                data: { 
+                    twoFactorAuthenticationSecret: cipher.update(secret, 'utf-8', 'hex') + cipher.final('hex'),
+                    iv: iv.toString('hex'),
+                },
             });
         }
+
         return await QRCode.toDataURL(authenticator.keyuri(userProfile.name, 'PingPong', secret));
     }
 
@@ -133,5 +163,66 @@ export class UserService {
             where: { id: user.preferencesId },
             data: { isTwoFactorAuthenticationEnabled: true },
         });
+    }
+
+    async postFriend(user: User, friendId: string) : Promise<void> {
+        if (user.id === friendId) {
+            throw new BadRequestException('You cannot add yourself as a friend');
+        }
+        
+        const friend: User | null = await this.databaseService.user.findUnique({
+            where: { id: friendId },
+        });
+
+        if (friend) {
+            await this.databaseService.user.update({
+                where: { id: user.id },
+                data: {
+                    friends: {
+                        connect: { id: friendId },
+                    },
+                },
+            });
+        } else {
+            throw new NotFoundException('Friend not found');
+        }
+    }
+
+    async getFriends(user: User) : Promise<User[]> {
+        const friends: User[] | null = await this.databaseService.user.findUnique({
+            where: { id: user.id },
+            select: { 
+                friends: true,
+            },
+        }).friends({
+            select: {
+                id: true,
+                profileId: true,
+            }
+        }) as User[] | null;
+
+        if (friends) {
+            return friends;
+        } else {
+            throw new NotFoundException('Friends not found');
+        }
+    }
+
+    async getFriendOf(user: User) {
+        const friendOf: User[] | null = await this.databaseService.user.findUnique({
+            where: {  id: user.id },
+            select: { friendOf: true },
+        }).friendOf({
+            select: {
+                id: true,
+                profileId: true,
+            }
+        }) as User[] | null;
+
+        if (friendOf) {
+            return friendOf;
+        } else {
+            throw new NotFoundException('Friend of not found');
+        }
     }
 }

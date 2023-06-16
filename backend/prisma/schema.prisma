@@ -53,5 +53,7 @@ model UserSensitiveData {
 
   twoFactorAuthenticationSecret String?
 
+  iv String?
+
   user User?
 }

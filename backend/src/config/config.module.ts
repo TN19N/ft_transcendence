@@ -7,6 +7,7 @@ import * as Joi from 'joi';
         NestConfigModule.forRoot({
             validationSchema: Joi.object({
                 DATABASE_URL: Joi.string().required(),
+                ENCRYPT_KEY: Joi.string().required(),
                 JWT_SECRET: Joi.string().required(),
                 BACKEND_PORT: Joi.number().required(),
                 INTRA_42_CLIENT_ID: Joi.string().required(),

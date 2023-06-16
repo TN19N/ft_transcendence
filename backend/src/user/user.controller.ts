@@ -1,10 +1,10 @@
 import { 
+    BadRequestException,
     Body, 
     Controller, 
     Get, 
     HttpCode, 
     HttpStatus,
-    Param,
     Post, 
     Query, 
     Res, 
@@ -40,6 +40,13 @@ export class UserController {
         await this.userService.deleteAll();
     }
 
+    // this is for testing purpose
+    @Post('add')
+    @HttpCode(HttpStatus.CREATED)
+    async add() {
+        await this.userService.addRandomUser();
+    }
+
     @Post('avatar')
     @UseInterceptors(FileInterceptor('avatar', {
         fileFilter: (req, file, callback) => {
@@ -67,25 +74,47 @@ export class UserController {
     @Get('avatar')
     @HttpCode(HttpStatus.OK)
     async getAvatar(@GetUser() user: User, @Res() response: Response, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
+        userId = userId ?? user.id;
 
-        const user2: User = await this.userService.getUserById(userId);
+        await this.userService.getUserById(userId, userId === user.id);
 
         response.setHeader('Content-Type', 'image/png');
-        response.download(`./upload/${user2.id}`);
+        response.download(`./upload/${userId}`);
     }
 
     @Get('')
     @HttpCode(HttpStatus.OK)
     async getUser(@GetUser() user: User, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
-        return await this.userService.getUserById(userId);
+        userId = userId ?? user.id;
+        return await this.userService.getUserById(userId, userId === user.id);
+    }
+
+    @Post('friend')
+    @HttpCode(HttpStatus.CREATED)
+    async postFriend(@GetUser() user: User, @Query('friendId') friendId?: string) {
+        if (friendId) {
+            await this.userService.postFriend(user, friendId);
+        } else {
+            throw new BadRequestException('friendId query parameter is required');
+        }
+    }
+
+    @Get('friends')
+    @HttpCode(HttpStatus.OK)
+    async getFriends(@GetUser() user: User) {
+        return await this.userService.getFriends(user);
+    }
+
+    @Get('friendOf')
+    @HttpCode(HttpStatus.OK)
+    async getFriendOf(@GetUser() user: User) {
+        return await this.userService.getFriendOf(user);
     }
 
     @Get('profile')
     @HttpCode(HttpStatus.OK)
     async getProfile(@GetUser() user: User, @Query('profileId') profileId?: string) {
-        if (!profileId) { profileId = user.profileId }
+        profileId = profileId ?? user.profileId;
         return await this.userService.getUserProfile(profileId);
     }
 
