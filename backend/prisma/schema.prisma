@@ -24,6 +24,9 @@ model User {
 
   friends User[] @relation("friends")
   friendOf User[] @relation("friends")
+
+  friendRequestsSent FriendRequest[] @relation("friendRequestsSent")
+  friendRequestsReceived FriendRequest[] @relation("friendRequestsReceived")
 }
 
 model UserProfile {
@@ -34,6 +37,20 @@ model UserProfile {
   name String @unique
 
   user User?
+}
+
+model FriendRequest {
+  id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+
+  sender User @relation("friendRequestsSent", fields: [senderId], references: [id])
+  senderId String
+
+  receiver User @relation("friendRequestsReceived", fields: [receiverId], references: [id])
+  receiverId String
+
+  @@unique([senderId, receiverId])
 }
 
 model UserPreferences {

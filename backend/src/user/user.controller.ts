@@ -5,6 +5,7 @@ import {
     Get, 
     HttpCode, 
     HttpStatus,
+    InternalServerErrorException,
     Post, 
     Query, 
     Res, 
@@ -24,6 +25,7 @@ import { AuthService } from './../auth/auth.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserProfileDto } from './dto';
+import * as fs from 'fs';
 
 @Controller('user')
 @UseGuards(JwtGuard)
@@ -45,6 +47,24 @@ export class UserController {
     @HttpCode(HttpStatus.CREATED)
     async add() {
         await this.userService.addRandomUser();
+    }
+
+    // this is for testing purpose
+    @Get('switch')
+    @HttpCode(HttpStatus.CREATED)
+    async switch( @Res({ passthrough: true }) response: Response, @Query('userId') userId?: string) {
+        if (userId) {
+            const user: User = await this.userService.getUserById(userId, true);
+            response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user, false));
+        } else {
+            throw new BadRequestException('userId query parameter is required');
+        }
+    }
+
+    @Get('friendRequests')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequests(@GetUser() user: User) {
+        return await this.userService.getFriendRequests(user);
     }
 
     @Post('avatar')
@@ -78,8 +98,12 @@ export class UserController {
 
         await this.userService.getUserById(userId, userId === user.id);
 
-        response.setHeader('Content-Type', 'image/png');
-        response.download(`./upload/${userId}`);
+        if (fs.existsSync(`./upload/${userId}`)) {
+            response.setHeader('Content-Type', 'image/png');
+            response.download(`./upload/${userId}`);
+        } else {
+            throw new InternalServerErrorException('Avatar not found');
+        }
     }
 
     @Get('')

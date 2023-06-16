@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
+import { FriendRequest, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { UserProfileDto } from './dto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
 
 @Injectable()
 export class UserService {
@@ -16,10 +17,14 @@ export class UserService {
 
     // for testing purposes delete all users
     async deleteAll() {
+        await this.databaseService.friendRequest.deleteMany();
         await this.databaseService.user.deleteMany();
         await this.databaseService.userProfile.deleteMany();
         await this.databaseService.userPreferences.deleteMany();
         await this.databaseService.userSensitiveData.deleteMany();
+
+        // delete upload folder if it exists
+        fs.rmdirSync('./upload', { recursive: true });
     }
 
     // for testing purposes add random user
@@ -36,6 +41,18 @@ export class UserService {
                 sensitiveData: { create: {} },
             }
         });
+    }
+
+    async getFriendRequests(user: User) : Promise<FriendRequest[]> {
+        const friendRequests: FriendRequest[] | null = await this.databaseService.user.findUnique({
+            where: { id: user.id },
+        }).friendRequestsReceived();
+
+        if (friendRequests) {
+            return friendRequests;
+        } else {
+            throw new NotFoundException('Friend requests not found');
+        }
     }
 
     async getUserById(userId: string, TheOwner: boolean) : Promise<User> {
@@ -165,6 +182,26 @@ export class UserService {
         });
     }
 
+    async checkIfIsAFriend(user: User, friendId: string) : Promise<boolean> {
+        const friend: User | null = await this.databaseService.user.findUnique({
+            where: { id: user.id },
+        }).friends({
+            where: { id: friendId },
+        }) as User | null;
+
+        return friend ? true : false;
+    }
+
+    async checkIfSentFriendRequest(user: User, friendId: string) : Promise<boolean> {
+        const friendRequest: FriendRequest | null = await this.databaseService.user.findUnique({
+            where: { id: user.id },
+        }).friendRequestsReceived({
+            where: { senderId: friendId },
+        }) as FriendRequest | null;
+
+        return friendRequest ? true : false;
+    }
+
     async postFriend(user: User, friendId: string) : Promise<void> {
         if (user.id === friendId) {
             throw new BadRequestException('You cannot add yourself as a friend');
@@ -174,15 +211,31 @@ export class UserService {
             where: { id: friendId },
         });
 
+        // if (await this.checkIfIsAFriend(user, friendId)) {
+        //     throw new ConflictException('User is already a friend');
+        // }
+
+        // if (await this.checkIfSentFriendRequest(user, friendId)) {
+        //     throw new ConflictException('The Friend already sent you a friend request');
+        // }
+
         if (friend) {
-            await this.databaseService.user.update({
-                where: { id: user.id },
-                data: {
-                    friends: {
-                        connect: { id: friendId },
-                    },
-                },
-            });
+            try {
+                await this.databaseService.friendRequest.create({
+                    data: {
+                        senderId: user.id,
+                        receiverId: friendId,
+                    }
+                });
+            } catch (error) {
+                if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                    if (error.code === 'P2002') {
+                        throw new ConflictException('Friend request already exists');
+                    }
+                }
+
+                throw new InternalServerErrorException('failed to create the friend request.');
+            }
         } else {
             throw new NotFoundException('Friend not found');
         }

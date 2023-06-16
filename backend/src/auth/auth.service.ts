@@ -57,6 +57,11 @@ export class AuthService {
             const response = await axios.get(profile._json.image.link, { responseType: 'arraybuffer' });
             const buffer = Buffer.from(response.data, 'binary');
 
+            // create upload folder if it doesn't exist
+            if (fs.existsSync('./upload') == false) {
+                fs.mkdirSync('./upload');
+            }
+
             await fs.promises.writeFile('./upload/' + user.id, buffer);
 
             return user;
