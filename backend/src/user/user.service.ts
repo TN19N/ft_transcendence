@@ -24,7 +24,7 @@ export class UserService {
         await this.databaseService.userSensitiveData.deleteMany();
 
         // delete upload folder if it exists
-        fs.rmdirSync('./upload', { recursive: true });
+        fs.rmSync('./upload', { recursive: true });
     }
 
     // for testing purposes add random user
@@ -52,6 +52,48 @@ export class UserService {
             return friendRequests;
         } else {
             throw new NotFoundException('Friend requests not found');
+        }
+    }
+
+    async getFriendRequestsSent(user: User) {
+        const friendRequestsSent: FriendRequest[] | null = await this.databaseService.user.findUnique({
+            where: { id: user.id }
+        }).friendRequestsSent();
+
+        if (friendRequestsSent) {
+            return friendRequestsSent;
+        } else {
+            throw new NotFoundException('Friend requests sent not found');
+        }
+    }
+
+    async acceptFriendRequest(user: User, friendRequestId: string): Promise<void> {
+        const friendRequest: FriendRequest | null = await this.databaseService.friendRequest.findUnique({
+            where: { id: friendRequestId }
+        });
+
+        if (friendRequest && friendRequest.receiverId === user.id) {
+            await this.databaseService.friendRequest.update({
+                where: { id: friendRequest.id },
+                data: { 
+                    receiver: {
+                        update: {
+                            friends: { connect: { id: friendRequest.senderId } }
+                        }
+                    },
+                    sender: {
+                        update: {
+                            friends: { connect: { id: friendRequest.receiverId } }
+                        }
+                    }
+                }
+            });
+            
+            await this.databaseService.friendRequest.delete({
+                where: { id: friendRequest.id },
+            });
+        } else {
+            throw new NotFoundException('Friend request not found');
         }
     }
 
@@ -182,44 +224,46 @@ export class UserService {
         });
     }
 
-    async checkIfIsAFriend(user: User, friendId: string) : Promise<boolean> {
-        const friend: User | null = await this.databaseService.user.findUnique({
-            where: { id: user.id },
-        }).friends({
-            where: { id: friendId },
-        }) as User | null;
+    async isFriend(user: User, friendId: string) : Promise<boolean> {
+        const isFriend = await this.databaseService.user.findFirst({
+            where: { 
+                id: user.id,
+                friends: {
+                    some: { id: friendId },
+                }
+            }
+        });
 
-        return friend ? true : false;
-    }
-
-    async checkIfSentFriendRequest(user: User, friendId: string) : Promise<boolean> {
-        const friendRequest: FriendRequest | null = await this.databaseService.user.findUnique({
-            where: { id: user.id },
-        }).friendRequestsReceived({
-            where: { senderId: friendId },
-        }) as FriendRequest | null;
-
-        return friendRequest ? true : false;
+        return isFriend ? true : false;
     }
 
     async postFriend(user: User, friendId: string) : Promise<void> {
         if (user.id === friendId) {
             throw new BadRequestException('You cannot add yourself as a friend');
         }
-        
+
         const friend: User | null = await this.databaseService.user.findUnique({
             where: { id: friendId },
         });
 
-        // if (await this.checkIfIsAFriend(user, friendId)) {
-        //     throw new ConflictException('User is already a friend');
-        // }
-
-        // if (await this.checkIfSentFriendRequest(user, friendId)) {
-        //     throw new ConflictException('The Friend already sent you a friend request');
-        // }
+        if (await this.isFriend(user, friendId)) {
+            throw new ConflictException('User is already a friend');
+        }
 
         if (friend) {
+            const friendRequest: FriendRequest | null = await this.databaseService.friendRequest.findUnique({
+                where: {
+                    senderId_receiverId: {
+                        senderId: friendId,
+                        receiverId: user.id,
+                    }
+                }
+            });
+
+            if (friendRequest) {
+                throw new ConflictException('Friend request already exists');
+            }
+
             try {
                 await this.databaseService.friendRequest.create({
                     data: {
@@ -258,24 +302,6 @@ export class UserService {
             return friends;
         } else {
             throw new NotFoundException('Friends not found');
-        }
-    }
-
-    async getFriendOf(user: User) {
-        const friendOf: User[] | null = await this.databaseService.user.findUnique({
-            where: {  id: user.id },
-            select: { friendOf: true },
-        }).friendOf({
-            select: {
-                id: true,
-                profileId: true,
-            }
-        }) as User[] | null;
-
-        if (friendOf) {
-            return friendOf;
-        } else {
-            throw new NotFoundException('Friend of not found');
         }
     }
 }

@@ -67,6 +67,22 @@ export class UserController {
         return await this.userService.getFriendRequests(user);
     }
 
+    @Get('friendRequestsSent')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequestsSent(@GetUser() user: User) {
+        return await this.userService.getFriendRequestsSent(user);
+    }
+
+    @Post('acceptFriendRequest')
+    @HttpCode(HttpStatus.CREATED)
+    async acceptFriendRequest(@GetUser() user: User, @Query('friendRequestId') friendId?: string) {
+        if (friendId) {
+            await this.userService.acceptFriendRequest(user, friendId);
+        } else {
+            throw new BadRequestException('friendRequestId query parameter is required');
+        }
+    }
+
     @Post('avatar')
     @UseInterceptors(FileInterceptor('avatar', {
         fileFilter: (req, file, callback) => {
@@ -127,12 +143,6 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     async getFriends(@GetUser() user: User) {
         return await this.userService.getFriends(user);
-    }
-
-    @Get('friendOf')
-    @HttpCode(HttpStatus.OK)
-    async getFriendOf(@GetUser() user: User) {
-        return await this.userService.getFriendOf(user);
     }
 
     @Get('profile')
