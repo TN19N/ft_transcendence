@@ -1,10 +1,11 @@
 import { 
+    BadRequestException,
     Body, 
     Controller, 
     Get, 
     HttpCode, 
     HttpStatus,
-    Param,
+    InternalServerErrorException,
     Post, 
     Query, 
     Res, 
@@ -24,6 +25,7 @@ import { AuthService } from './../auth/auth.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserProfileDto } from './dto';
+import * as fs from 'fs';
 
 @Controller('user')
 @UseGuards(JwtGuard)
@@ -38,6 +40,47 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async delete() {
         await this.userService.deleteAll();
+    }
+
+    // this is for testing purpose
+    @Post('add')
+    @HttpCode(HttpStatus.CREATED)
+    async add() {
+        await this.userService.addRandomUser();
+    }
+
+    // this is for testing purpose
+    @Get('switch')
+    @HttpCode(HttpStatus.CREATED)
+    async switch( @Res({ passthrough: true }) response: Response, @Query('userId') userId?: string) {
+        if (userId) {
+            const user: User = await this.userService.getUserById(userId, true);
+            response.setHeader('Set-Cookie', await this.authService.getLoginCookie(user, false));
+        } else {
+            throw new BadRequestException('userId query parameter is required');
+        }
+    }
+
+    @Get('friendRequests')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequests(@GetUser() user: User) {
+        return await this.userService.getFriendRequests(user);
+    }
+
+    @Get('friendRequestsSent')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequestsSent(@GetUser() user: User) {
+        return await this.userService.getFriendRequestsSent(user);
+    }
+
+    @Post('acceptFriendRequest')
+    @HttpCode(HttpStatus.CREATED)
+    async acceptFriendRequest(@GetUser() user: User, @Query('friendRequestId') friendId?: string) {
+        if (friendId) {
+            await this.userService.acceptFriendRequest(user, friendId);
+        } else {
+            throw new BadRequestException('friendRequestId query parameter is required');
+        }
     }
 
     @Post('avatar')
@@ -67,25 +110,45 @@ export class UserController {
     @Get('avatar')
     @HttpCode(HttpStatus.OK)
     async getAvatar(@GetUser() user: User, @Res() response: Response, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
+        userId = userId ?? user.id;
 
-        const user2: User = await this.userService.getUserById(userId);
+        await this.userService.getUserById(userId, userId === user.id);
 
-        response.setHeader('Content-Type', 'image/png');
-        response.download(`./upload/${user2.id}`);
+        if (fs.existsSync(`./upload/${userId}`)) {
+            response.setHeader('Content-Type', 'image/png');
+            response.download(`./upload/${userId}`);
+        } else {
+            throw new InternalServerErrorException('Avatar not found');
+        }
     }
 
     @Get('')
     @HttpCode(HttpStatus.OK)
     async getUser(@GetUser() user: User, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
-        return await this.userService.getUserById(userId);
+        userId = userId ?? user.id;
+        return await this.userService.getUserById(userId, userId === user.id);
+    }
+
+    @Post('friend')
+    @HttpCode(HttpStatus.CREATED)
+    async postFriend(@GetUser() user: User, @Query('friendId') friendId?: string) {
+        if (friendId) {
+            await this.userService.postFriend(user, friendId);
+        } else {
+            throw new BadRequestException('friendId query parameter is required');
+        }
+    }
+
+    @Get('friends')
+    @HttpCode(HttpStatus.OK)
+    async getFriends(@GetUser() user: User) {
+        return await this.userService.getFriends(user);
     }
 
     @Get('profile')
     @HttpCode(HttpStatus.OK)
     async getProfile(@GetUser() user: User, @Query('profileId') profileId?: string) {
-        if (!profileId) { profileId = user.profileId }
+        profileId = profileId ?? user.profileId;
         return await this.userService.getUserProfile(profileId);
     }
 

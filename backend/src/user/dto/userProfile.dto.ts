@@ -1,4 +1,4 @@
-import { IsAlphanumeric, IsNotEmpty } from "class-validator";
+import { IsAlphanumeric } from "class-validator";
 
 export class UserProfileDto {
     @IsAlphanumeric()

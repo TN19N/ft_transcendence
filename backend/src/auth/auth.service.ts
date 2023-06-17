@@ -7,6 +7,8 @@ import axios from 'axios';
 import { authenticator } from "otplib";
 import { JwtPayloadDto } from "./dto";
 import { UserService } from "src/user/user.service";
+import { createDecipheriv } from "crypto";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AuthService {
@@ -14,6 +16,7 @@ export class AuthService {
         private jwtService: JwtService,
         private databaseService: DatabaseService,
         private userService: UserService,
+        private configService: ConfigService,
     ) {}
 
     async getLoginCookie(user: User, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
@@ -54,6 +57,11 @@ export class AuthService {
             const response = await axios.get(profile._json.image.link, { responseType: 'arraybuffer' });
             const buffer = Buffer.from(response.data, 'binary');
 
+            // create upload folder if it doesn't exist
+            if (fs.existsSync('./upload') == false) {
+                fs.mkdirSync('./upload');
+            }
+
             await fs.promises.writeFile('./upload/' + user.id, buffer);
 
             return user;
@@ -64,10 +72,17 @@ export class AuthService {
         const userSensitiveData = await this.userService.getUserSensitiveData(user.sensitiveDataId);
 
         let isValid : boolean = false;
-        if (userSensitiveData.twoFactorAuthenticationSecret) {
+        if (userSensitiveData.twoFactorAuthenticationSecret && userSensitiveData.iv) {
+            const {twoFactorAuthenticationSecret, iv} = userSensitiveData;
+
+            const ivBuffer = Buffer.from(iv, 'hex');
+            const decipher = createDecipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, ivBuffer);
+
+            const secret = decipher.update(twoFactorAuthenticationSecret, 'hex', 'utf-8') + decipher.final('utf-8');
+
             isValid = authenticator.verify({
                 token: twoFactorAuthenticationCode,
-                secret: userSensitiveData.twoFactorAuthenticationSecret,
+                secret: secret,
             });
         }
 
