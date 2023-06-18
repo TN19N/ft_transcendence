@@ -17,14 +17,15 @@ export class UserService {
 
     // for testing purposes delete all users
     async deleteAll() {
-        await this.databaseService.friendRequest.deleteMany();
-        await this.databaseService.user.deleteMany();
-        await this.databaseService.userProfile.deleteMany();
-        await this.databaseService.userPreferences.deleteMany();
-        await this.databaseService.userSensitiveData.deleteMany();
+        await this.databaseService.$transaction( async (tx) => {
+            await tx.friendRequest.deleteMany();
+            await tx.user.deleteMany();
+            await tx.userProfile.deleteMany();
+            await tx.userPreferences.deleteMany();
+            await tx.userSensitiveData.deleteMany();
 
-        // delete upload folder if it exists
-        fs.rmSync('./upload', { recursive: true });
+            fs.rmSync('./upload', { recursive: true });
+        });
     }
 
     // for testing purposes add random user
@@ -43,6 +44,22 @@ export class UserService {
         });
     }
 
+    async search(query: string): Promise<User[]> {
+        return (await this.databaseService.user.findMany({
+            where: {
+                profile: {
+                    name: {
+                        startsWith: query,
+                    }
+                }
+            },
+            select: {
+                id: true,
+                profileId: true,
+            }
+        })) as User[];
+    }
+
     async getFriendRequests(user: User) : Promise<FriendRequest[]> {
         const friendRequests: FriendRequest[] | null = await this.databaseService.user.findUnique({
             where: { id: user.id },
@@ -55,7 +72,7 @@ export class UserService {
         }
     }
 
-    async getFriendRequestsSent(user: User) {
+    async getFriendRequestsSent(user: User) : Promise<FriendRequest[]> {
         const friendRequestsSent: FriendRequest[] | null = await this.databaseService.user.findUnique({
             where: { id: user.id }
         }).friendRequestsSent();
@@ -73,24 +90,37 @@ export class UserService {
         });
 
         if (friendRequest && friendRequest.receiverId === user.id) {
-            await this.databaseService.friendRequest.update({
-                where: { id: friendRequest.id },
-                data: { 
-                    receiver: {
-                        update: {
-                            friends: { connect: { id: friendRequest.senderId } }
-                        }
-                    },
-                    sender: {
-                        update: {
-                            friends: { connect: { id: friendRequest.receiverId } }
+            await this.databaseService.$transaction( async (tx) => {
+                await tx.friendRequest.update({
+                    where: { id: friendRequest.id },
+                    data: { 
+                        receiver: {
+                            update: {
+                                friends: { connect: { id: friendRequest.senderId } }
+                            }
+                        },
+                        sender: {
+                            update: {
+                                friends: { connect: { id: friendRequest.receiverId } }
+                            }
                         }
                     }
-                }
-            });
-            
-            await this.databaseService.friendRequest.delete({
-                where: { id: friendRequest.id },
+                });
+                
+                await tx.friendRequest.deleteMany({
+                    where: {
+                        OR: [
+                            {
+                                senderId: friendRequest.senderId,
+                                receiverId: friendRequest.receiverId,
+                            },
+                            {
+                                senderId: friendRequest.receiverId,
+                                receiverId: friendRequest.senderId,
+                            }
+                        ]
+                    }
+                });
             });
         } else {
             throw new NotFoundException('Friend request not found');
@@ -130,9 +160,7 @@ export class UserService {
         try {
             await this.databaseService.userProfile.update({
                 where: { id: user.profileId },
-                data: {
-                    name: userProfileDto.name,
-                }
+                data: { ...userProfileDto }
             })
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -246,22 +274,9 @@ export class UserService {
             where: { id: friendId },
         });
 
-        if (await this.isFriend(user, friendId)) {
-            throw new ConflictException('User is already a friend');
-        }
-
         if (friend) {
-            const friendRequest: FriendRequest | null = await this.databaseService.friendRequest.findUnique({
-                where: {
-                    senderId_receiverId: {
-                        senderId: friendId,
-                        receiverId: user.id,
-                    }
-                }
-            });
-
-            if (friendRequest) {
-                throw new ConflictException('Friend request already exists');
+            if (await this.isFriend(user, friendId)) {
+                throw new ConflictException('User is already a friend');
             }
 
             try {
@@ -288,9 +303,7 @@ export class UserService {
     async getFriends(user: User) : Promise<User[]> {
         const friends: User[] | null = await this.databaseService.user.findUnique({
             where: { id: user.id },
-            select: { 
-                friends: true,
-            },
+            select: { friends: true },
         }).friends({
             select: {
                 id: true,

@@ -61,13 +61,23 @@ export class UserController {
         }
     }
 
-    @Get('friendRequests')
+    @Get('search')
+    @HttpCode(HttpStatus.OK)
+    async search(@Query('query') query?: string) {
+        if (query) {
+            return await this.userService.search(query);
+        } else {
+            throw new BadRequestException('\'query\' query parameter is required');
+        }
+    }
+
+    @Get('friendRequests/received')
     @HttpCode(HttpStatus.OK)
     async getFriendRequests(@GetUser() user: User) {
         return await this.userService.getFriendRequests(user);
     }
 
-    @Get('friendRequestsSent')
+    @Get('friendRequests/sent')
     @HttpCode(HttpStatus.OK)
     async getFriendRequestsSent(@GetUser() user: User) {
         return await this.userService.getFriendRequestsSent(user);
