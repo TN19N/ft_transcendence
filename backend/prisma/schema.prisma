@@ -8,8 +8,8 @@ datasource db {
 }
 
 model User {
-  intraId                 Int               @unique
   id                      String            @id @default(uuid())
+  intraId                 Int               @unique
   createdAt               DateTime          @default(now())
 
   profile                 UserProfile       @relation(fields: [profileId], references: [id])
@@ -47,7 +47,7 @@ model FriendRequest {
   receiver    User      @relation("friendRequestsReceived", fields: [receiverId], references: [id])
   receiverId  String
 
-  @@unique([senderId, receiverId])
+  @@unique([senderId, receiverId], name: "senderToReceiver")
 }
 
 model UserPreferences {

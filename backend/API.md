@@ -20,9 +20,10 @@
 * POST   /api/user/profile {UserProfileDto} - Update user profile.
 * POST   /api/user/friend?friendId - send friend request to the user with the friendId.
 * GET    /api/user/friends - Get all friends for the current user.
-* GET    /api/user/friendRequests - Get all friend requests for the current user.
-* GET    /api/user/friendRequestsSent - Get all friend requests sent by the current user.
+* GET    /api/user/friendRequests/received - Get all friend requests for the current user.
+* GET    /api/user/friendRequests/sent - Get all friend requests sent by the current user.
 * POST   /api/user/acceptFriendRequest?friendRequestId - Accept friend request with the friendRequestId.
+* GET    /api/user/search?query - Search for users by query (match the query with the beginning of the user name).
 
 ## testing:
 * POST   /api/user/delete - delete ALL 🤣.
