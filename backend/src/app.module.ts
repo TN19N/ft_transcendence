@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
+import { AuthenticationModule } from './authentication/authentication.module';
 import { DatabaseModule } from './database/database.module';
 import { UserModule } from './user/user.module';
 import { GameModule } from './game/game.module';
 import { ChatModule } from './chat/chat.module';
-import { ConfigModule } from './config/config.module';
+import { ConfigurationModule } from './configuration/configuration.module';
 
 @Module({
   imports: [
-    AuthModule,
+    AuthenticationModule,
     DatabaseModule,
-    ConfigModule,
+    ConfigurationModule,
     UserModule,
     GameModule,
     ChatModule,

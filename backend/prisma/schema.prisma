@@ -28,11 +28,18 @@ model User {
   friendRequestsReceived  FriendRequest[]   @relation("friendRequestsReceived")
 }
 
+enum UserStatus {
+  ONLINE
+  PLAYING
+  OFFLINE
+}
+
 model UserProfile {
   id        String    @id @default(uuid())
   updatedAt DateTime  @default(now())
 
-  name      String    @unique
+  name      String     @unique
+  status    UserStatus @default(OFFLINE)
 
   user      User?
 }

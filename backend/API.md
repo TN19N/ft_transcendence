@@ -12,9 +12,9 @@
 * POST  /api/user/avatar {form-data: {avatar: file.png}} - Upload avatar for the user.
 * GET   /api/user/avatar?userId - Get avatar for the user with the userId.
 * GET   /api/user?userId - Get user with the userId.
-* GET   /api/user/profile?userId - Get user profile with the userId.
+* GET   /api/user/profile?profileId - Get user profile with the userId.
 
-// Note: userId is optional, if not provided, it will return the current user.
+// Note: userId and profileId is optional, if not provided, it will return the current user data.
 
 * GET    /api/user/preferences - Get user preferences.
 * POST   /api/user/profile {UserProfileDto} - Update user profile.

@@ -1,22 +1,22 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { User, UserPreferences } from "@prisma/client";
-import { DatabaseService } from "src/database/database.service";
-import * as fs from 'fs';
-import axios from 'axios';
+import { DatabaseService } from "./../database/database.service";
 import { authenticator } from "otplib";
-import { JwtPayloadDto } from "./dto";
-import { UserService } from "src/user/user.service";
+import { JwtPayload } from "./interface";
+import { UserService } from "./../user/user.service";
 import { createDecipheriv } from "crypto";
 import { ConfigService } from "@nestjs/config";
+import * as fs from 'fs';
+import axios from 'axios';
 
 @Injectable()
-export class AuthService {
+export class AuthenticationService {
     constructor(
-        private jwtService: JwtService,
-        private databaseService: DatabaseService,
-        private userService: UserService,
-        private configService: ConfigService,
+        private readonly jwtService: JwtService,
+        private readonly databaseService: DatabaseService,
+        private readonly userService: UserService,
+        private readonly configurationService: ConfigService,
     ) {}
 
     async getLoginCookie(user: User, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
@@ -25,7 +25,7 @@ export class AuthService {
             isTwoFactorAuthenticationEnabled = userPreferences.isTwoFactorAuthenticationEnabled;
         }
 
-        const payload : JwtPayloadDto = {
+        const payload : JwtPayload = {
             sub: user.id,
             tfa: isTwoFactorAuthenticationEnabled,
         };
@@ -57,7 +57,6 @@ export class AuthService {
             const response = await axios.get(profile._json.image.link, { responseType: 'arraybuffer' });
             const buffer = Buffer.from(response.data, 'binary');
 
-            // create upload folder if it doesn't exist
             if (fs.existsSync('./upload') == false) {
                 fs.mkdirSync('./upload');
             }
@@ -76,7 +75,7 @@ export class AuthService {
             const {twoFactorAuthenticationSecret, iv} = userSensitiveData;
 
             const ivBuffer = Buffer.from(iv, 'hex');
-            const decipher = createDecipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, ivBuffer);
+            const decipher = createDecipheriv('aes-256-cbc', this.configurationService.get('ENCRYPT_KEY')!, ivBuffer);
 
             const secret = decipher.update(twoFactorAuthenticationSecret, 'hex', 'utf-8') + decipher.final('utf-8');
 

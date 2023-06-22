@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { FriendRequest, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService } from './../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { UserProfileDto } from './dto';
@@ -11,8 +11,8 @@ import * as fs from 'fs';
 @Injectable()
 export class UserService {
     constructor(
-        private databaseService: DatabaseService,
-        private configService: ConfigService,
+        private readonly databaseService: DatabaseService,
+        private readonly configurationService: ConfigService,
     ) {}
 
     // for testing purposes delete all users
@@ -206,14 +206,14 @@ export class UserService {
             let {twoFactorAuthenticationSecret, iv} = userSensitiveData;
 
             const ivBuffer = Buffer.from(iv, 'hex');
-            const decipher = createDecipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, ivBuffer);
+            const decipher = createDecipheriv('aes-256-cbc', this.configurationService.get('ENCRYPT_KEY')!, ivBuffer);
 
             secret = decipher.update(twoFactorAuthenticationSecret, 'hex', 'utf-8') + decipher.final('utf-8');
         } else {
             secret = authenticator.generateSecret();
 
             const iv = randomBytes(16);
-            const cipher = createCipheriv('aes-256-cbc', this.configService.get('ENCRYPT_KEY')!, iv);
+            const cipher = createCipheriv('aes-256-cbc', this.configurationService.get('ENCRYPT_KEY')!, iv);
 
             await this.databaseService.userSensitiveData.update({
                 where: { id: user.sensitiveDataId },
