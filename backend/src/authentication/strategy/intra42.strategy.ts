@@ -2,14 +2,14 @@ import { Injectable, UsePipes, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { Strategy } from "passport-42";
-import { AuthService } from "../auth.service";
+import { AuthenticationService } from "./../authentication.service";
 import { User } from "@prisma/client";
 
 @Injectable()
 export class Intra42Strategy extends PassportStrategy(Strategy, 'intra42') {
     constructor(
-        configService: ConfigService,
-        private authService: AuthService,
+        readonly configService: ConfigService,
+        private  readonly authService: AuthenticationService,
     ) {
         super({
             clientID: configService.get('INTRA_42_CLIENT_ID'),

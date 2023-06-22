@@ -5,12 +5,13 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { DatabaseService } from "./../../database/database.service";
 import { Request } from "express";
 import { User } from "@prisma/client";
+import { JwtPayload } from "./../interface";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     constructor(
-        configService: ConfigService,
-        private databaseService: DatabaseService
+        readonly configService: ConfigService,
+        private readonly databaseService: DatabaseService
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromExtractors([
@@ -22,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
     }
 
-    async validate(payload: { sub: string, tfa: boolean }): Promise<User | null> {
+    async validate(payload: JwtPayload): Promise<User | null> {
         if (payload.tfa == false) {
             return await this.databaseService.user.findUnique({
                 where: { id: payload.sub }

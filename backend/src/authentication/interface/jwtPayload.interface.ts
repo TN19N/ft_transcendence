@@ -1,4 +1,4 @@
-export class JwtPayloadDto {
+export interface JwtPayload {
     sub: string;
     tfa: boolean;
 }
