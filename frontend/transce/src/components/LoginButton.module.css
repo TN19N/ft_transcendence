@@ -1,0 +1,12 @@
+.buttonLog:hover
+{
+    border-color: black;
+    color: black;
+    -webkit-text-stroke: 1px black;
+    background-color: white;
+}
+
+.buttonText
+{
+    -webkit-text-stroke: 1.5px #9747FF;
+}
