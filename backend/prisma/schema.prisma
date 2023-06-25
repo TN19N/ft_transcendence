@@ -7,71 +7,76 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserStatus {
+  ONLINE
+  OFFLINE
+}
+
 model User {
   id                      String            @id @default(uuid())
   intraId                 Int               @unique
   createdAt               DateTime          @default(now())
 
-  profile                 UserProfile       @relation(fields: [profileId], references: [id])
-  profileId               String            @unique
+  profile                 UserProfile?
+  preferences             UserPreferences?
+  sensitiveData           UserSensitiveData?
 
-  preferences             UserPreferences   @relation(fields: [preferencesId], references: [id])
-  preferencesId           String            @unique
-
-  sensitiveData           UserSensitiveData @relation(fields: [sensitiveDataId], references: [id])
-  sensitiveDataId         String            @unique
-
-  friends                 User[]            @relation("friends")
-  friendOf                User[]            @relation("friends")
-
-  friendRequestsSent      FriendRequest[]   @relation("friendRequestsSent")
-  friendRequestsReceived  FriendRequest[]   @relation("friendRequestsReceived")
-}
-
-enum UserStatus {
-  ONLINE
-  PLAYING
-  OFFLINE
+  friends                 Friendship[]      @relation(name: "UserToFriendship")
+  friendsOf               Friendship[]      @relation(name: "FriendshipToUser")
 }
 
 model UserProfile {
-  id        String    @id @default(uuid())
-  updatedAt DateTime  @default(now())
+  updatedAt DateTime                        @default(now())
 
-  name      String     @unique
-  status    UserStatus @default(OFFLINE)
+  name      String                          @unique
+  status    UserStatus                      @default(OFFLINE)
 
-  user      User?
-}
+  user      User                            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String                          @id
 
-model FriendRequest {
-  id          String    @id @default(uuid())
-  createdAt   DateTime  @default(now())
-
-  sender      User      @relation("friendRequestsSent", fields: [senderId], references: [id])
-  senderId    String
-
-  receiver    User      @relation("friendRequestsReceived", fields: [receiverId], references: [id])
-  receiverId  String
-
-  @@unique([senderId, receiverId], name: "senderToReceiver")
+  freindRequestsSent      FriendRequest[]   @relation(name: "UserProfileToFriendRequest")
+  friendRequestsReceived  FriendRequest[]   @relation(name: "FriendRequestToUserProfile")
 }
 
 model UserPreferences {
-  id                                String    @id @default(uuid())
   updatedAt                         DateTime  @default(now())
 
   isTwoFactorAuthenticationEnabled  Boolean   @default(false)
 
-  user                              User?
+  user                              User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId                            String    @id
 }
 
 model UserSensitiveData {
-  id                            String    @id @default(uuid())
   updatedAt                     DateTime  @default(now())
 
   twoFactorAuthenticationSecret String?
   iv                            String?
 
-  user                          User?
+  user                          User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId                        String    @id
+}
+
+model Friendship {
+  createdAt DateTime                        @default(now())
+
+  user      User                            @relation(name: "UserToFriendship", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String
+
+  friend    User                            @relation(name: "FriendshipToUser", fields: [friendId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  friendId  String
+
+  @@id([userId, friendId], name: "FriendshipUniqueConstraint")
+}
+
+model FriendRequest {
+  createdAt           DateTime          @default(now())
+
+  senderProfile       UserProfile       @relation("UserProfileToFriendRequest", fields: [senderId], references: [userId])
+  senderId            String
+
+  receiverProfile     UserProfile       @relation("FriendRequestToUserProfile", fields: [receiverId], references: [userId])
+  receiverId          String
+
+  @@id([senderId, receiverId], name: "FriendRequestUniqueConstraint")
 }

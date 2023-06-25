@@ -27,9 +27,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserProfileDto } from './dto';
 import * as fs from 'fs';
+import { ApiBadRequestResponse, ApiCreatedResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
+@ApiTags('user')
 @Controller('user')
 @UseGuards(JwtGuard)
+@ApiUnauthorizedResponse({ description: 'Unauthorized' })
 export class UserController {
     constructor(
         private readonly userService: UserService,
@@ -37,22 +40,30 @@ export class UserController {
     ) {}
 
     // this is for testing purpose
+    @ApiTags('Testing')
     @Post('delete')
     @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiNoContentResponse({ description: 'deleted all users' })
     async delete() {
         await this.userService.deleteAll();
     }
 
     // this is for testing purpose
+    @ApiTags('Testing')
     @Post('add')
     @HttpCode(HttpStatus.CREATED)
+    @ApiCreatedResponse({ description: 'added random user' })
     async add() {
         await this.userService.addRandomUser();
     }
 
     // this is for testing purpose
+    @ApiTags('Testing')
     @Get('switch')
     @HttpCode(HttpStatus.CREATED)
+    @ApiCreatedResponse({ description: 'switched to user' })
+    @ApiBadRequestResponse({ description: 'userId query parameter is required' })
+    @ApiNotFoundResponse({ description: 'User not found' })
     async switch(@Req() request: Request, @Query('userId') userId?: string) {
         if (userId) {
             const user: User = await this.userService.getUserById(userId, true);

@@ -19,6 +19,15 @@ export class AuthenticationService {
         private readonly configurationService: ConfigService,
     ) {}
 
+    async validateJwtToken(jwt: string): Promise<JwtPayload | null> {
+        try {
+            const payload: JwtPayload = await this.jwtService.verifyAsync(jwt);
+            return payload;
+        } catch (error) {
+            return null;
+        }
+    }
+
     async getLoginCookie(user: User, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
         if (isTwoFactorAuthenticationEnabled === undefined) {
             const userPreferences: UserPreferences = await this.userService.getUserPreferences(user.preferencesId);

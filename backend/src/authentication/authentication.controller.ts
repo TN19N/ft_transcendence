@@ -16,14 +16,19 @@ import { User } from '@prisma/client';
 import { Request } from 'express';
 import { Jwt2faGuard } from './guard/jwt2fa.guard';
 import { TwoFactorAuthenticationCodeDto } from './dto';
+import { ApiCreatedResponse, ApiMovedPermanentlyResponse, ApiNoContentResponse, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
+@ApiTags('authentication')
 @Controller('auth')
+@ApiUnauthorizedResponse({ description: 'Unauthorized' })
 export class AuthenticationController {
     constructor(private readonly authenticationService: AuthenticationService) {}
 
     @Get('login')
     @HttpCode(HttpStatus.CREATED)
     @UseGuards(Intra42Guard)
+    @ApiCreatedResponse({ description: 'login The User' })
+    @ApiMovedPermanentlyResponse({ description: 'Redirect to 42 intra login page' })
     async login(@GetUser() user: User, @Req() request: Request) {
         request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(user));
     }
@@ -31,6 +36,7 @@ export class AuthenticationController {
     @Post('2fa')
     @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(Jwt2faGuard)
+    @ApiNoContentResponse({ description: 'verify 2fa code to be valid' })
     async validateTwoFactorAuthenticationCode(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto, @Req() request: Request) {
         const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
 
@@ -44,6 +50,7 @@ export class AuthenticationController {
     @Post('logout')
     @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(JwtGuard)
+    @ApiNoContentResponse({ description: 'logout The User' })
     async logout(@Req() request: Request) {
         request.res!.clearCookie('Authentication');
     }
