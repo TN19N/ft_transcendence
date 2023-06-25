@@ -34,5 +34,5 @@
     - the user should be able to play ping pong match vs other users.
     - there must be a matchmaking system.
     - the game must be faithful the original ping pong (1972).
-    - there must be custom games + original game mode.
+    - there must be custom games mode + original game mode.
     - the game must be responsive.

@@ -6,6 +6,4 @@ import { GameService } from './game.service';
   controllers: [GameController],
   providers: [GameService]
 })
-export class GameModule {
-
-}
+export class GameModule {}

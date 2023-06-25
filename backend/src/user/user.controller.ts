@@ -1,12 +1,14 @@
 import { 
+    BadRequestException,
     Body, 
     Controller, 
     Get, 
     HttpCode, 
     HttpStatus,
-    Param,
+    InternalServerErrorException,
     Post, 
     Query, 
+    Req, 
     Res, 
     UnauthorizedException, 
     UnsupportedMediaTypeException, 
@@ -15,22 +17,23 @@ import {
     UseInterceptors, 
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { JwtGuard } from 'src/auth/guard';
-import { GetUser } from '../auth/decorator';
+import { JwtGuard } from './../authentication/guard';
+import { GetUser } from './../authentication/decorator';
 import { User } from '@prisma/client';
-import { TwoFactorAuthenticationCodeDto } from 'src/auth/dto';
-import { Response } from 'express';
-import { AuthService } from './../auth/auth.service';
+import { TwoFactorAuthenticationCodeDto } from './../authentication/dto';
+import { Request, Response } from 'express';
+import { AuthenticationService } from './../authentication/authentication.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserProfileDto } from './dto';
+import * as fs from 'fs';
 
 @Controller('user')
 @UseGuards(JwtGuard)
 export class UserController {
     constructor(
-        private userService: UserService,
-        private authService: AuthService,
+        private readonly userService: UserService,
+        private readonly authenticationService: AuthenticationService,
     ) {}
 
     // this is for testing purpose
@@ -38,6 +41,57 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async delete() {
         await this.userService.deleteAll();
+    }
+
+    // this is for testing purpose
+    @Post('add')
+    @HttpCode(HttpStatus.CREATED)
+    async add() {
+        await this.userService.addRandomUser();
+    }
+
+    // this is for testing purpose
+    @Get('switch')
+    @HttpCode(HttpStatus.CREATED)
+    async switch(@Req() request: Request, @Query('userId') userId?: string) {
+        if (userId) {
+            const user: User = await this.userService.getUserById(userId, true);
+            request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(user, false));
+        } else {
+            throw new BadRequestException('userId query parameter is required');
+        }
+    }
+
+    @Get('search')
+    @HttpCode(HttpStatus.OK)
+    async search(@Query('query') query?: string) {
+        if (query) {
+            return await this.userService.search(query);
+        } else {
+            throw new BadRequestException('\'query\' query parameter is required');
+        }
+    }
+
+    @Get('friendRequests/received')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequests(@GetUser() user: User) {
+        return await this.userService.getFriendRequests(user);
+    }
+
+    @Get('friendRequests/sent')
+    @HttpCode(HttpStatus.OK)
+    async getFriendRequestsSent(@GetUser() user: User) {
+        return await this.userService.getFriendRequestsSent(user);
+    }
+
+    @Post('acceptFriendRequest')
+    @HttpCode(HttpStatus.CREATED)
+    async acceptFriendRequest(@GetUser() user: User, @Query('friendRequestId') friendId?: string) {
+        if (friendId) {
+            await this.userService.acceptFriendRequest(user, friendId);
+        } else {
+            throw new BadRequestException('friendRequestId query parameter is required');
+        }
     }
 
     @Post('avatar')
@@ -65,27 +119,48 @@ export class UserController {
     }
 
     @Get('avatar')
-    @HttpCode(HttpStatus.OK)
     async getAvatar(@GetUser() user: User, @Res() response: Response, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
+        userId = userId ?? user.id;
 
-        const user2: User = await this.userService.getUserById(userId);
+        await this.userService.getUserById(userId, userId === user.id);
 
-        response.setHeader('Content-Type', 'image/png');
-        response.download(`./upload/${user2.id}`);
+        if (fs.existsSync(`./upload/${userId}`)) {
+            response.setHeader('Content-Type', 'image/png');
+            response.setHeader('Content-Disposition', 'attachment; filename=avatar.png');
+            response.statusCode = HttpStatus.OK;
+            response.download(`./upload/${userId}`);
+        } else {
+            throw new InternalServerErrorException('Avatar not found');
+        }
     }
 
     @Get('')
     @HttpCode(HttpStatus.OK)
     async getUser(@GetUser() user: User, @Query('userId') userId?: string) {
-        if (!userId) { userId = user.id }
-        return await this.userService.getUserById(userId);
+        userId = userId ?? user.id;
+        return await this.userService.getUserById(userId, userId === user.id);
+    }
+
+    @Post('friend')
+    @HttpCode(HttpStatus.CREATED)
+    async postFriend(@GetUser() user: User, @Query('friendId') friendId?: string) {
+        if (friendId) {
+            await this.userService.postFriend(user, friendId);
+        } else {
+            throw new BadRequestException('friendId query parameter is required');
+        }
+    }
+
+    @Get('friends')
+    @HttpCode(HttpStatus.OK)
+    async getFriends(@GetUser() user: User) {
+        return await this.userService.getFriends(user);
     }
 
     @Get('profile')
     @HttpCode(HttpStatus.OK)
     async getProfile(@GetUser() user: User, @Query('profileId') profileId?: string) {
-        if (!profileId) { profileId = user.profileId }
+        profileId = profileId ?? user.profileId;
         return await this.userService.getUserProfile(profileId);
     }
 
@@ -116,7 +191,7 @@ export class UserController {
     @Post('enable2fa')
     @HttpCode(HttpStatus.CREATED)
     async enable2FA(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto) {
-        const isValid : boolean = await this.authService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
+        const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
 
         if (isValid) {
             await this.userService.enableTwoFactorAuthentication(user);
