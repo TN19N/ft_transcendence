@@ -18,7 +18,7 @@ export class UserService {
 
     // for testing
     public async addRandomUser(): Promise<User> {
-        return await this.userRepository.createUser({
+        const user = await this.userRepository.createUser({
             data: {
                 intraId: Math.floor(Math.random() * 1000000),
                 profile: {
@@ -29,6 +29,28 @@ export class UserService {
                 preferences: { create: {} },
                 sensitiveData: { create: {} },
             }
+        });
+
+        // copy the bot profile picture to the user's profile picture
+        const botProfilePicturePath = this.configurationService.get('BOT_PROFILE_PICTURE_PATH');
+
+        if (botProfilePicturePath) {
+            const userProfilePicturePath = `./profile/${user.id}`;
+            
+            fs.copyFileSync(botProfilePicturePath, `./`);
+
+        return user;
+    }
+
+    public async getUser(userId: string): Promise<User | null> {
+        return await this.userRepository.getUser({
+            where: {id: userId}
+        });
+    }
+
+    public async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+        return await this.userRepository.getUserPreferences({
+            where: {userId: userId},
         });
     }
 
@@ -41,6 +63,18 @@ export class UserService {
                     },
                 },
             },
+        });
+    }
+
+    public async getFriendRequestsReceived(userId: string): Promise<FriendRequest[]> {
+        return await this.userRepository.getFriendRequests({
+            where: { receiverId: userId }
+        });
+    }
+
+    public async getFriendRequestsSent(userId: string): Promise<FriendRequest[]> {
+        return await this.userRepository.getFriendRequests({
+            where: { senderId: userId }
         });
     }
 
@@ -61,16 +95,21 @@ export class UserService {
         return null;
     }
 
-    public async turnOnTwoFactorAuthentication(userId: string): Promise<string | null> {
+    public async turnOnTwoFactorAuthentication(userId: string): Promise<string> {
         const userSensitiveData = await this.userRepository.getUserSensitiveData({
             where: { userId: userId },
         });
+
+        if (!userSensitiveData) {
+            throw new Error('User Sensitive Data not found');
+        }
+
         const userProfile = await this.userRepository.getUserProfile({
             where: { userId: userId },
         });
 
-        if (!userSensitiveData || !userProfile) {
-            return null;
+        if (!userProfile) {
+            throw new Error('User Profile not found');
         }
 
         let secret: string;
@@ -99,7 +138,7 @@ export class UserService {
         return await QRCode.toDataURL(authenticator.keyuri(userProfile.name, 'PingPong', secret));
     }
 
-    public async turnOffTwoFactorAuthentication(userId: string): Promise<void | Error> {
+    public async turnOffTwoFactorAuthentication(userId: string): Promise<void> {
         const userPreferences = await this.userRepository.getUserPreferences({
             where: { userId: userId },
         });
@@ -109,21 +148,21 @@ export class UserService {
         }
 
         if (userPreferences.isTwoFactorAuthenticationEnabled === true) {
-            await this.userRepository.updateUserPreferences({
-                where: { userId: userId },
+            await this.userRepository.updateUser({
+                where: { id: userId },
                 data: {
-                    isTwoFactorAuthenticationEnabled: false,
-                    user: {
+                    preferences: {
                         update: {
-                            sensitiveData: {
-                                update: {
-                                    twoFactorAuthenticationSecret: null,
-                                    iv: null,
-                                },
-                            },
-                        },
+                            isTwoFactorAuthenticationEnabled: false,
+                        }
                     },
-                },
+                    sensitiveData: {
+                        update: {
+                            twoFactorAuthenticationSecret: null,
+                            iv: null,
+                        }
+                    }
+                }
             });
         }
     }
@@ -173,5 +212,31 @@ export class UserService {
 
             throw error;
         }
+    }
+
+    public async getUserFriends(userId: string): Promise<User[] | null> {
+        return await this.userRepository.getUser({
+            where:  { id: userId},
+            select: { friends: true },
+        }).friends() as User[] | null;
+    }
+
+    public async getUserProfile(userId: string): Promise<UserProfile | null> {
+        return await this.userRepository.getUserProfile({
+            where: {userId: userId},
+        });
+    }
+
+    public async updateUserProfile(userId: string, userProfileDto: UserProfileDto): Promise<void> {
+        await this.userRepository.updateUserProfile({
+            where: {userId},
+            data: {}
+        });
+    }
+
+    async getUserSensitiveData(userId: string) : Promise<UserSensitiveData | null> {
+        return await this.userRepository.getUserSensitiveData({
+            where: {userId: userId},
+        });
     }
 }

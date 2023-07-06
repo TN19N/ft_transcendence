@@ -6,6 +6,7 @@ import {
     HttpCode, 
     HttpStatus,
     InternalServerErrorException,
+    NotFoundException,
     Post, 
     Query, 
     Req, 
@@ -18,8 +19,8 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtGuard } from './../authentication/guard';
-import { GetUser } from './../authentication/decorator';
-import { User } from '@prisma/client';
+import { GetUserId } from './../authentication/decorator';
+import { FriendRequest, User, UserPreferences, UserProfile } from '@prisma/client';
 import { TwoFactorAuthenticationCodeDto } from './../authentication/dto';
 import { Request, Response } from 'express';
 import { AuthenticationService } from './../authentication/authentication.service';
@@ -29,10 +30,8 @@ import { UserProfileDto } from './dto';
 import * as fs from 'fs';
 import { ApiBadRequestResponse, ApiCreatedResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
-@ApiTags('user')
 @Controller('user')
 @UseGuards(JwtGuard)
-@ApiUnauthorizedResponse({ description: 'Unauthorized' })
 export class UserController {
     constructor(
         private readonly userService: UserService,
@@ -40,36 +39,26 @@ export class UserController {
     ) {}
 
     // this is for testing purpose
-    @ApiTags('Testing')
-    @Post('delete')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiNoContentResponse({ description: 'deleted all users' })
-    async delete() {
-        await this.userService.deleteAll();
-    }
-
-    // this is for testing purpose
-    @ApiTags('Testing')
-    @Post('add')
+    @Post('addUser')
     @HttpCode(HttpStatus.CREATED)
-    @ApiCreatedResponse({ description: 'added random user' })
-    async add() {
+    async addRandomUser() {
         await this.userService.addRandomUser();
     }
 
     // this is for testing purpose
-    @ApiTags('Testing')
-    @Get('switch')
+    @Get('switchToUser')
     @HttpCode(HttpStatus.CREATED)
-    @ApiCreatedResponse({ description: 'switched to user' })
-    @ApiBadRequestResponse({ description: 'userId query parameter is required' })
-    @ApiNotFoundResponse({ description: 'User not found' })
-    async switch(@Req() request: Request, @Query('userId') userId?: string) {
-        if (userId) {
-            const user: User = await this.userService.getUserById(userId, true);
-            request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(user, false));
+    async switch(@Req() request: Request, @Query('id') id?: string) {
+        if (id) {
+            const user: User | null = await this.userService.getUser(id);
+
+            if (user) {
+                request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(id));
+            } else {
+                throw new NotFoundException(`user with the id \"${id}\" not found`)
+            }
         } else {
-            throw new BadRequestException('userId query parameter is required');
+            throw new BadRequestException("'id' query parameter is required");
         }
     }
 
@@ -79,29 +68,29 @@ export class UserController {
         if (query) {
             return await this.userService.search(query);
         } else {
-            throw new BadRequestException('\'query\' query parameter is required');
+            throw new BadRequestException("'query' query parameter is required");
         }
     }
 
     @Get('friendRequests/received')
     @HttpCode(HttpStatus.OK)
-    async getFriendRequests(@GetUser() user: User) {
-        return await this.userService.getFriendRequests(user);
+    async getFriendRequests(@GetUserId() userId: string) {
+        return await this.userService.getFriendRequestsReceived(userId);
     }
 
     @Get('friendRequests/sent')
     @HttpCode(HttpStatus.OK)
-    async getFriendRequestsSent(@GetUser() user: User) {
-        return await this.userService.getFriendRequestsSent(user);
+    async getFriendRequestsSent(@GetUserId() userId: string) {
+        return await this.userService.getFriendRequestsSent(userId);
     }
 
     @Post('acceptFriendRequest')
     @HttpCode(HttpStatus.CREATED)
-    async acceptFriendRequest(@GetUser() user: User, @Query('friendRequestId') friendId?: string) {
+    async acceptFriendRequest(@GetUserId() userId: string, @Query('friendId') friendId?: string) {
         if (friendId) {
-            await this.userService.acceptFriendRequest(user, friendId);
+            await this.userService.acceptFriendRequest(userId, friendId);
         } else {
-            throw new BadRequestException('friendRequestId query parameter is required');
+            throw new BadRequestException('friendId query parameter is required');
         }
     }
 
@@ -123,40 +112,38 @@ export class UserController {
         }),
     }))
     @HttpCode(HttpStatus.CREATED)
-    async postAvatar(@GetUser() user: User, @UploadedFile() file: Express.Multer.File) {
+    async postAvatar(@UploadedFile() file: Express.Multer.File) {
         if (file === undefined) {
             throw new UnsupportedMediaTypeException('Only png files are allowed');
         }
     }
 
     @Get('avatar')
-    async getAvatar(@GetUser() user: User, @Res() response: Response, @Query('userId') userId?: string) {
-        userId = userId ?? user.id;
+    async getAvatar(@GetUserId() userId: string, @Res() response: Response, @Query('id') id?: string) {
+        id = id ?? userId;
 
-        await this.userService.getUserById(userId, userId === user.id);
-
-        if (fs.existsSync(`./upload/${userId}`)) {
+        if (fs.existsSync(`./upload/${id}`)) {
             response.setHeader('Content-Type', 'image/png');
             response.setHeader('Content-Disposition', 'attachment; filename=avatar.png');
             response.statusCode = HttpStatus.OK;
-            response.download(`./upload/${userId}`);
+            response.download(`./upload/${id}`);
         } else {
             throw new InternalServerErrorException('Avatar not found');
         }
     }
 
-    @Get('')
+    @Get()
     @HttpCode(HttpStatus.OK)
-    async getUser(@GetUser() user: User, @Query('userId') userId?: string) {
-        userId = userId ?? user.id;
-        return await this.userService.getUserById(userId, userId === user.id);
+    async getUser(@GetUserId() userId: string, @Query('id') id?: string) {
+        id = id ?? userId;
+        return await this.userService.getUser(id);
     }
 
-    @Post('friend')
+    @Post('friendRequest')
     @HttpCode(HttpStatus.CREATED)
-    async postFriend(@GetUser() user: User, @Query('friendId') friendId?: string) {
+    async postFriendRequest(@GetUserId() user: string, @Query('friendId') friendId?: string) {
         if (friendId) {
-            await this.userService.postFriend(user, friendId);
+            await this.userService.sendFriendRequest(user, friendId);
         } else {
             throw new BadRequestException('friendId query parameter is required');
         }
@@ -164,45 +151,62 @@ export class UserController {
 
     @Get('friends')
     @HttpCode(HttpStatus.OK)
-    async getFriends(@GetUser() user: User) {
-        return await this.userService.getFriends(user);
+    async getFriends(@GetUserId() userId: string) {
+        const friends: User[] | null = await this.userService.getUserFriends(userId);
+
+        if (friends) {
+            return friends;
+        } else {
+            throw new InternalServerErrorException("Failed to find user friends");
+        }
     }
 
     @Get('profile')
     @HttpCode(HttpStatus.OK)
-    async getProfile(@GetUser() user: User, @Query('profileId') profileId?: string) {
-        profileId = profileId ?? user.profileId;
-        return await this.userService.getUserProfile(profileId);
+    async getProfile(@GetUserId() userId: string, @Query('id') id?: string) {
+        const profile: UserProfile | null = await this.userService.getUserProfile(id ?? userId);
+
+        if (profile) {
+            return profile;
+        } else {
+            throw new InternalServerErrorException("Failed to find user profile");
+        }
     }
 
     @Post('profile')
     @HttpCode(HttpStatus.CREATED)
-    async postProfile(@GetUser() user: User, @Body() userProfileDto: UserProfileDto) {
-        await this.userService.postUserProfile(user, userProfileDto);
+    async updateUserProfile(@GetUserId() userId: string, @Body() userProfileDto: UserProfileDto) {
+        await this.userService.updateUserProfile(userId, userProfileDto);
     }
 
     @Get('preferences')
     @HttpCode(HttpStatus.OK)
-    async getPreferences(@GetUser() user: User) {
-        return await this.userService.getUserPreferences(user.preferencesId);
+    async getPreferences(@GetUserId() userId: string) {
+        const preferences: UserPreferences | null =  await this.userService.getUserPreferences(userId);
+
+        if (preferences) {
+            return preferences;
+        } else {
+            throw new InternalServerErrorException("Failed to find user preferences");
+        }
     }
 
     @Post('turnOn2fa')
     @HttpCode(HttpStatus.CREATED)
-    async turnOnTwoFactorAuthentication(@GetUser() user: User) {
-        return await this.userService.turnOnTwoFactorAuthentication(user);
+    async turnOnTwoFactorAuthentication(@GetUserId() userId: string) {
+        return await this.userService.turnOnTwoFactorAuthentication(userId);
     }
 
     @Post('turnOff2fa')
     @HttpCode(HttpStatus.CREATED)
-    async turnOffTwoFactorAuthentication(@GetUser() user: User) {
+    async turnOffTwoFactorAuthentication(@GetUserId() user: string) {
         await this.userService.turnOffTwoFactorAuthentication(user);
     }
 
     @Post('enable2fa')
     @HttpCode(HttpStatus.CREATED)
-    async enable2FA(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto) {
-        const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
+    async enable2FA(@GetUserId() userId: string, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto) {
+        const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(userId, twoFactorAuthenticationCodeDto.code);
 
         if (isValid) {
             await this.userService.enableTwoFactorAuthentication(user);

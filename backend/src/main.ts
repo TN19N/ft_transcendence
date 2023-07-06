@@ -8,7 +8,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
-    app.enableCors();
+    app.enableCors({
+        origin: app.get(ConfigService).get('FRONTEND_ORIGIN'),
+        credentials: true,
+        methods: ['GET', 'POST']
+    });
     
     app.useGlobalPipes(new ValidationPipe({
         whitelist: true,
@@ -20,12 +24,12 @@ async function bootstrap() {
     const config = new DocumentBuilder()
         .setTitle('PingPong API Documentation')
         .setDescription('The PingPong API description')
-        .setVersion('0.1')
+        .setVersion('1.0')
         .addTag('pingPong')
         .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    SwaggerModule.setup('/api/docs', app, document);
 
     await app.listen(app.get(ConfigService).get('BACKEND_PORT')!);
 }

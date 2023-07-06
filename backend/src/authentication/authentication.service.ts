@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { User, UserPreferences } from "@prisma/client";
+import { User, UserPreferences, UserSensitiveData } from "@prisma/client";
 import { DatabaseService } from "./../database/database.service";
 import { authenticator } from "otplib";
 import { JwtPayload } from "./interface";
@@ -28,14 +28,19 @@ export class AuthenticationService {
         }
     }
 
-    async getLoginCookie(user: User, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
+    async getLoginCookie(userId: string, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
         if (isTwoFactorAuthenticationEnabled === undefined) {
-            const userPreferences: UserPreferences = await this.userService.getUserPreferences(user.preferencesId);
+            const userPreferences: UserPreferences | null = await this.userService.getUserPreferences(userId);
+
+            if (!userPreferences) {
+                throw new NotFoundException(`user preferences with id '${userId}' not found`);
+            }
+
             isTwoFactorAuthenticationEnabled = userPreferences.isTwoFactorAuthenticationEnabled;
         }
 
         const payload : JwtPayload = {
-            sub: user.id,
+            sub: userId,
             tfa: isTwoFactorAuthenticationEnabled,
         };
 
@@ -76,8 +81,8 @@ export class AuthenticationService {
         }
     }
 
-    async validateTwoFactorAuthenticationCode(user: User, twoFactorAuthenticationCode: string): Promise<boolean> {
-        const userSensitiveData = await this.userService.getUserSensitiveData(user.sensitiveDataId);
+    async validateTwoFactorAuthenticationCode(userId: string, twoFactorAuthenticationCode: string): Promise<boolean> {
+        const userSensitiveData = await this.userService.getUserSensitiveData(userId);
 
         let isValid : boolean = false;
         if (userSensitiveData.twoFactorAuthenticationSecret && userSensitiveData.iv) {
