@@ -47,6 +47,7 @@ services:
     env_file: [.env]
     environment:
       DATABASE_URL: "postgresql://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT/$DATABASE_NAME?schema=public"
+      FRONTEND_ORIGIN: "$FRONTEND_HOST:$FRONTEND_PORT"
   # Frontend ------------------------------------------------------------------------------------------------
   frontend:
     depends_on: [backend]

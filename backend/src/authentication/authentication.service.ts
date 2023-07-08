@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { User, UserPreferences } from "@prisma/client";
 import { DatabaseService } from "./../database/database.service";
@@ -19,14 +19,28 @@ export class AuthenticationService {
         private readonly configurationService: ConfigService,
     ) {}
 
-    async getLoginCookie(user: User, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
+    async validateJwtToken(jwt: string): Promise<JwtPayload | null> {
+        try {
+            const payload: JwtPayload = await this.jwtService.verifyAsync(jwt);
+            return payload;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async getLoginCookie(userId: string, isTwoFactorAuthenticationEnabled: boolean | undefined = undefined): Promise<string> {
         if (isTwoFactorAuthenticationEnabled === undefined) {
-            const userPreferences: UserPreferences = await this.userService.getUserPreferences(user.preferencesId);
+            const userPreferences: UserPreferences | null = await this.userService.getUserPreferences(userId);
+
+            if (!userPreferences) {
+                throw new NotFoundException(`user preferences with id '${userId}' not found`);
+            }
+
             isTwoFactorAuthenticationEnabled = userPreferences.isTwoFactorAuthenticationEnabled;
         }
 
         const payload : JwtPayload = {
-            sub: user.id,
+            sub: userId,
             tfa: isTwoFactorAuthenticationEnabled,
         };
 
@@ -67,8 +81,12 @@ export class AuthenticationService {
         }
     }
 
-    async validateTwoFactorAuthenticationCode(user: User, twoFactorAuthenticationCode: string): Promise<boolean> {
-        const userSensitiveData = await this.userService.getUserSensitiveData(user.sensitiveDataId);
+    async validateTwoFactorAuthenticationCode(userId: string, twoFactorAuthenticationCode: string): Promise<boolean> {
+        const userSensitiveData = await this.userService.getUserSensitiveData(userId);
+
+        if (!userSensitiveData) {
+            throw new NotFoundException(`user sensitive data with id '${userId}' not found`);
+        }
 
         let isValid : boolean = false;
         if (userSensitiveData.twoFactorAuthenticationSecret && userSensitiveData.iv) {
@@ -82,13 +100,6 @@ export class AuthenticationService {
             isValid = authenticator.verify({
                 token: twoFactorAuthenticationCode,
                 secret: secret,
-            });
-        }
-
-        if (isValid) {
-            await this.databaseService.userPreferences.update({
-                where: { id: user.preferencesId },
-                data: { isTwoFactorAuthenticationEnabled: true },
             });
         }
 
