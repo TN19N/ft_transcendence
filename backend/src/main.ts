@@ -25,7 +25,6 @@ async function bootstrap() {
         .setTitle('PingPong API Documentation')
         .setDescription('The PingPong API description')
         .setVersion('1.0')
-        .addTag('pingPong')
         .build();
 
     const document = SwaggerModule.createDocument(app, config);

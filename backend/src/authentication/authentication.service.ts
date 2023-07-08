@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { User, UserPreferences, UserSensitiveData } from "@prisma/client";
+import { User, UserPreferences } from "@prisma/client";
 import { DatabaseService } from "./../database/database.service";
 import { authenticator } from "otplib";
 import { JwtPayload } from "./interface";
@@ -84,6 +84,10 @@ export class AuthenticationService {
     async validateTwoFactorAuthenticationCode(userId: string, twoFactorAuthenticationCode: string): Promise<boolean> {
         const userSensitiveData = await this.userService.getUserSensitiveData(userId);
 
+        if (!userSensitiveData) {
+            throw new NotFoundException(`user sensitive data with id '${userId}' not found`);
+        }
+
         let isValid : boolean = false;
         if (userSensitiveData.twoFactorAuthenticationSecret && userSensitiveData.iv) {
             const {twoFactorAuthenticationSecret, iv} = userSensitiveData;
@@ -96,13 +100,6 @@ export class AuthenticationService {
             isValid = authenticator.verify({
                 token: twoFactorAuthenticationCode,
                 secret: secret,
-            });
-        }
-
-        if (isValid) {
-            await this.databaseService.userPreferences.update({
-                where: { id: user.preferencesId },
-                data: { isTwoFactorAuthenticationEnabled: true },
             });
         }
 

@@ -15,7 +15,6 @@ import * as Joi from 'joi';
                 INTRA_42_CLIENT_ID: Joi.string().required(),
                 INTRA_42_CLIENT_SECRET: Joi.string().required(),
                 INTRA_42_CALLBACK_URL: Joi.string().required(),
-                BOT_PROFILE_PICTURE_PATH: Joi.string().required(),
             })
         }),
     ],

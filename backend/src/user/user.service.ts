@@ -23,7 +23,7 @@ export class UserService {
                 intraId: Math.floor(Math.random() * 1000000),
                 profile: {
                     create: {
-                        name: `test${Math.floor(Math.random() * 1000000)}`,
+                        name: `bot${Math.floor(Math.random() * 1000000)}`,
                     }
                 },
                 preferences: { create: {} },
@@ -31,13 +31,12 @@ export class UserService {
             }
         });
 
-        // copy the bot profile picture to the user's profile picture
-        const botProfilePicturePath = this.configurationService.get('BOT_PROFILE_PICTURE_PATH');
+        const botAvatar = "./assets/bot.png";
 
-        if (botProfilePicturePath) {
-            const userProfilePicturePath = `./profile/${user.id}`;
-            
-            fs.copyFileSync(botProfilePicturePath, `./`);
+        const read = fs.createReadStream(botAvatar);
+        const write = fs.createWriteStream(`./upload/${user.id}`);
+
+        read.pipe(write);
 
         return user;
     }
@@ -101,7 +100,7 @@ export class UserService {
         });
 
         if (!userSensitiveData) {
-            throw new Error('User Sensitive Data not found');
+            throw new NotFoundException('User Sensitive Data not found');
         }
 
         const userProfile = await this.userRepository.getUserProfile({
@@ -109,7 +108,7 @@ export class UserService {
         });
 
         if (!userProfile) {
-            throw new Error('User Profile not found');
+            throw new NotFoundException('User Profile not found');
         }
 
         let secret: string;
@@ -126,7 +125,7 @@ export class UserService {
             const iv = randomBytes(16);
             const cipher = createCipheriv('aes-256-cbc', this.configurationService.get('ENCRYPT_KEY')!, iv);
 
-            this.userRepository.updateUserSensitiveData({
+            await this.userRepository.updateUserSensitiveData({
                 where: { userId: userId },
                 data: {
                     twoFactorAuthenticationSecret: cipher.update(secret, 'utf-8', 'hex') + cipher.final('hex'),
@@ -144,7 +143,7 @@ export class UserService {
         });
 
         if (!userPreferences) {
-            throw new Error('user preferences not found');
+            throw new NotFoundException('user preferences not found');
         }
 
         if (userPreferences.isTwoFactorAuthenticationEnabled === true) {
@@ -170,7 +169,7 @@ export class UserService {
     public async enableTwoFactorAuthentication(userId: string) : Promise<void> {
         await this.userRepository.updateUserPreferences({
             where: { userId: userId },
-            data: { isTwoFactorAuthenticationEnabled: true },
+            data:  { isTwoFactorAuthenticationEnabled: true },
         });
     }
 
@@ -189,24 +188,28 @@ export class UserService {
 
     public async sendFriendRequest(userId: string, friendId: string) : Promise<void> {
         if (userId === friendId) {
-            throw new Error('user cannot send a friend request to himself');
+            throw new ConflictException('user cannot send a friend request to himself');
+        }
+
+        if (await this.userRepository.getUser({ where: { id: friendId } }) === null) {
+            throw new NotFoundException('friend not found');
         }
 
         if (await this.isFriend(userId, friendId)) {
-            throw new Error('user is already a friend');
+            throw new ConflictException('user is already a friend');
         }
 
         try {
             await this.userRepository.createFriendRequest({
                 data: {
-                    senderId: userId,
-                    receiverId: friendId,
+                    senderProfile: { connect: { userId: userId } },
+                    receiverProfile: { connect: { userId: friendId } },
                 },
             });
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === 'P2002') {
-                    throw new Error('Friend request already exists');
+                    throw new ConflictException('Friend request already exists');
                 }
             }
 
@@ -228,10 +231,20 @@ export class UserService {
     }
 
     public async updateUserProfile(userId: string, userProfileDto: UserProfileDto): Promise<void> {
-        await this.userRepository.updateUserProfile({
-            where: {userId},
-            data: {}
-        });
+        try {
+            await this.userRepository.updateUserProfile({
+                where: {userId},
+                data: {...userProfileDto},
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new ConflictException('User name already exists');
+                }
+            }
+
+            throw error;
+        }
     }
 
     async getUserSensitiveData(userId: string) : Promise<UserSensitiveData | null> {

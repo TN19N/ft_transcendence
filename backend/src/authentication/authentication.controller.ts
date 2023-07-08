@@ -11,8 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
 import { Intra42Guard, JwtGuard } from './guard';
-import { GetUser } from './decorator';
-import { User } from '@prisma/client';
+import { GetUserId } from './decorator';
 import { Request } from 'express';
 import { Jwt2faGuard } from './guard/jwt2fa.guard';
 import { TwoFactorAuthenticationCodeDto } from './dto';
@@ -29,19 +28,19 @@ export class AuthenticationController {
     @UseGuards(Intra42Guard)
     @ApiCreatedResponse({ description: 'login The User' })
     @ApiMovedPermanentlyResponse({ description: 'Redirect to 42 intra login page' })
-    async login(@GetUser() user: User, @Req() request: Request) {
-        request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(user));
+    async login(@GetUserId() userId: string, @Req() request: Request) {
+        request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(userId));
     }
 
     @Post('2fa')
     @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(Jwt2faGuard)
     @ApiNoContentResponse({ description: 'verify 2fa code to be valid' })
-    async validateTwoFactorAuthenticationCode(@GetUser() user: User, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto, @Req() request: Request) {
-        const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(user, twoFactorAuthenticationCodeDto.code);
+    async validateTwoFactorAuthenticationCode(@GetUserId() userId: string, @Body() twoFactorAuthenticationCodeDto: TwoFactorAuthenticationCodeDto, @Req() request: Request) {
+        const isValid : boolean = await this.authenticationService.validateTwoFactorAuthenticationCode(userId, twoFactorAuthenticationCodeDto.code);
 
         if (isValid) {
-            request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(user, false));
+            request.res!.setHeader('Set-Cookie', await this.authenticationService.getLoginCookie(userId, false));
         } else {
             throw new UnauthorizedException('Wrong two factor authentication code');
         }

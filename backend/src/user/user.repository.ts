@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { FriendRequest, Prisma, PrismaClient, User, UserProfile } from "@prisma/client";
-import { constrainedMemory } from "process";
+import { FriendRequest, Friendship, Prisma, PrismaClient } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
 
 @Injectable()
@@ -134,14 +133,14 @@ export class UserRepository {
     }
 
     // Tools
-    public acceptFriendRequest(friendRequest: FriendRequest, prisma: PrismaClient = this.databaseService) {
-        return prisma.$transaction( async (tx: PrismaClient) => {
+    public async acceptFriendRequest(friendRequest: FriendRequest, prisma: PrismaClient = this.databaseService): Promise<Friendship> {
+        return prisma.$transaction<Friendship> ( async (tx) => {
             const friendship = await this.createFriendship({
                 data: {
                     userId: friendRequest.senderId,
                     friendId: friendRequest.receiverId,
                 },
-            }, tx);
+            }, tx as PrismaClient);
 
             await this.deleteFriendRequests({
                 where: {
@@ -156,7 +155,7 @@ export class UserRepository {
                         },
                     ],
                 }
-            }, tx);
+            }, tx as PrismaClient);
 
             return friendship;
         });
