@@ -65,21 +65,18 @@ export class UserRepository {
     }
 
     // Friendship [C-R-D]
-    private createFriendship(params: Prisma.FriendshipCreateArgs, prisma: PrismaClient = this.databaseService) {
-        return prisma.$transaction( async (tx) => {
-            const friendship = await tx.friendship.create(params);
+    private async createFriendship(params: Prisma.FriendshipCreateArgs, prisma: PrismaClient = this.databaseService) {
+        const friendship = await prisma.friendship.create(params);
 
-            await tx.friendship.create({
-                ...params,
-                data: {
-                    ...(params.data as Prisma.FriendshipCreateInput),
-                    user:   { connect: { id: params.data.friendId } },
-                    friend: { connect: { id: params.data.userId   } },
-                },
-            });
-
-            return friendship;
+        await prisma.friendship.create({
+            ...params,
+            data: {
+                user:   { connect: { id: params.data.friendId } },
+                friend: { connect: { id: params.data.userId   } },
+            },
         });
+
+        return friendship;
     }
 
     public getFriendship(params: Prisma.FriendshipFindUniqueArgs, prisma: PrismaClient = this.databaseService) {
@@ -134,7 +131,7 @@ export class UserRepository {
 
     // Tools
     public async acceptFriendRequest(friendRequest: FriendRequest, prisma: PrismaClient = this.databaseService): Promise<Friendship> {
-        return prisma.$transaction<Friendship> ( async (tx) => {
+        return await prisma.$transaction<Friendship> ( async (tx) => {
             const friendship = await this.createFriendship({
                 data: {
                     userId: friendRequest.senderId,
