@@ -129,7 +129,7 @@ export class UserRepository {
         return prisma.friendRequest.deleteMany(params);
     }
 
-    // Tools
+    // Accept Friend Request
     public async acceptFriendRequest(friendRequest: FriendRequest, prisma: PrismaClient = this.databaseService): Promise<Friendship> {
         return await prisma.$transaction<Friendship> ( async (tx) => {
             const friendship = await this.createFriendship({

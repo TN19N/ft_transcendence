@@ -5,7 +5,7 @@ services:
   database:
     image: postgres:15-alpine
     container_name: $DATABASE_HOST
-    restart: always
+    restart: unless-stopped
     expose: [$DATABASE_PORT]
     ports: [$DATABASE_PORT:$DATABASE_PORT] # for development only
     volumes: [database-data:/var/lib/postgresql/data]
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
     image: dbeaver/cloudbeaver:23.0.4
     container_name: database-client
-    restart: always
+    restart: unless-stopped
     expose: [8978]
     ports: [8978:8978]
     networks: [app-network]
@@ -40,7 +40,7 @@ services:
     build: ./backend
     image: backend
     container_name: backend
-    restart: always
+    restart: unless-stopped
     networks: [app-network]
     expose: [$BACKEND_PORT]
     ports: [$BACKEND_PORT:$BACKEND_PORT]
@@ -54,7 +54,7 @@ services:
     build: ./frontend
     image: frontend
     container_name: frontend
-    restart: always
+    restart: unless-stopped
     networks: [app-network]
 
     ports: [5173:5173]

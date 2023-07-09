@@ -10,6 +10,7 @@ import { User, UserStatus } from "@prisma/client";
 @WebSocketGateway({
     namespace: 'user',
 })
+@UseGuards(JwtGuard)
 export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     constructor(
         private readonly databaseService: DatabaseService,
@@ -17,12 +18,12 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
         ) {}
 
     async handleConnection(client: Socket) {
-        const user = await this.validateUser(client);
+        const userId = await this.validateUser(client);
 
-        if (user) {
+        if (userId) {
             try {
                 await this.databaseService.user.update({
-                    where: { id: user.id },
+                    where: { id: userId },
                     data: {
                         profile: {
                             update: {
@@ -40,12 +41,12 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     async handleDisconnect(client: Socket) {    
-        const user = await this.validateUser(client);
+        const userId = await this.validateUser(client);
 
-        if (user) {
+        if (userId) {
             try {
                 await this.databaseService.user.update({
-                    where: { id: user.id },
+                    where: { id: userId },
                     data: {
                         profile: {
                             update: {
@@ -62,7 +63,7 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    async validateUser(client: Socket) : Promise<User | null>{
+    async validateUser(client: Socket) : Promise<string | null>{
         const jwt = client.handshake.headers.cookie?.split(';')
             .find(cookie => cookie.trim().startsWith('Authentication='))
             ?.split('=').at(1);
@@ -71,9 +72,9 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const payload: JwtPayload | null = await this.authenticationService.validateJwtToken(jwt);
     
             if (payload && payload.tfa == false) {
-                return await this.databaseService.user.findUnique({
+                return (await this.databaseService.user.findUnique({
                     where: { id: payload.sub },
-                });
+                }))?.id ?? null;
             }
         }
 
