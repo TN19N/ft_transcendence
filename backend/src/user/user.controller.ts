@@ -19,7 +19,7 @@ import {
 import { UserService } from './user.service';
 import { JwtGuard } from './../authentication/guard';
 import { GetUserId } from './../authentication/decorator';
-import { Friendship, PrismaClient, User, UserPreferences, UserProfile } from '@prisma/client';
+import { Friendship, GameRecord, PrismaClient, User, UserPreferences, UserProfile } from '@prisma/client';
 import { TwoFactorAuthenticationCodeDto } from './../authentication/dto';
 import { Request, Response } from 'express';
 import { AuthenticationService } from './../authentication/authentication.service';
@@ -69,6 +69,21 @@ export class UserController {
         }
     }
 
+    @Get('gamesRecord')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "games record returned! GameRecord[]"})
+    @ApiNotFoundResponse({description: "Games record for the user not found!"})
+    @ApiQuery({name: "id", required: false})
+    async getGamesRecord(@GetUserId() userId: string, @Query('id') id?: string) {
+        const gamesRecord: GameRecord[] | null = await this.userService.getGamesRecord(id ?? userId);
+
+        if (gamesRecord) {
+            return gamesRecord;
+        } else {
+            throw new NotFoundException(`Games record for user with id '${id ?? userId}' Not found!`)
+        }
+    }
+
     @Get('search')
     @HttpCode(HttpStatus.OK)
     @ApiOkResponse({description: "search result returned! User[]"})
@@ -94,7 +109,7 @@ export class UserController {
     async getFriendRequestsSent(@GetUserId() userId: string) {
         return await this.userService.getFriendRequestsSent(userId);
     }
-
+ 
     @Post('acceptFriendRequest')
     @HttpCode(HttpStatus.CREATED)
     @ApiCreatedResponse({description: "friend request accepted!"})
