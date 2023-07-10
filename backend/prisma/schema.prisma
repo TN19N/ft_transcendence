@@ -36,6 +36,21 @@ model UserProfile {
 
   freindRequestsSent      FriendRequest[]   @relation(name: "UserProfileToFriendRequest")
   friendRequestsReceived  FriendRequest[]   @relation(name: "FriendRequestToUserProfile")
+
+  gamesRecord             GameRecord[]
+}
+
+model GameRecord {
+  id            String      @id @default(uuid())
+  cratedAt      DateTime    @default(now())
+
+  userProfile   UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  userId        String
+
+  opponentId    String
+
+  userScore     Int
+  opponentScore Int
 }
 
 model UserPreferences {

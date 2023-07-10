@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { FriendRequest, Friendship, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
+import { FriendRequest, Friendship, GameRecord, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
 import { DatabaseService } from './../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
@@ -39,6 +39,15 @@ export class UserService {
         read.pipe(write);
 
         return user;
+    }
+
+    public async getGamesRecord(id: string): Promise<GameRecord[] | null> {
+        return await this.userRepository.getUserProfile({
+            where: {userId: id},
+            select: {
+                gamesRecord: true,
+            }
+        }).gamesRecord();
     }
 
     public async getUser(userId: string): Promise<User | null> {
