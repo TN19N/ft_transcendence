@@ -5,11 +5,13 @@ import { AuthenticationModule } from './../authentication/authentication.module'
 import { ConfigModule } from '@nestjs/config';
 import { UserGateway } from './user.gateway';
 import { UserRepository } from './user.repository';
+import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
   imports: [
     forwardRef(() => AuthenticationModule), 
     ConfigModule,
+    DatabaseModule,
   ],
   controllers: [UserController],
   providers: [UserService, UserGateway, UserRepository],

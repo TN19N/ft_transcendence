@@ -23,7 +23,38 @@ model User {
 
   friends                 Friendship[]      @relation(name: "UserToFriendship")
   friendsOf               Friendship[]      @relation(name: "FriendshipToUser")
+
+  bannedUsers             Ban[]             @relation(name: "BanToUser")
+  bannedBy                Ban[]             @relation(name: "BanToBannedUser")
+
+  // receivedMessages        Messages[]        @relation(name: "MessageToReceiver")
+  // sentMessages            Messages[]        @relation(name: "MessageToSender")
 }
+
+model Ban {
+  craetedAt   DateTime    @default(now())
+  
+  user        User        @relation(name: "BanToUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId      String
+
+  bannedUser  User        @relation(name: "BanToBannedUser" ,fields: [bannedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  bannedUserId String
+
+  @@id([userId, bannedUserId], name: "BanUniqueConstraint")
+}
+
+// model Messages {
+//   id          String      @id @default(uuid())
+//   cratedAt    DateTime    @default(now())
+
+//   sender      User        @relation(name: "MessageToSender", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+//   senderId    String
+
+//   receiver    User        @relation(name: "MessageToReceiver", fields: [receiverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+//   receiverId  String
+
+//   content     String
+// }
 
 model UserProfile {
   updatedAt DateTime                        @default(now())
@@ -37,16 +68,18 @@ model UserProfile {
   freindRequestsSent      FriendRequest[]   @relation(name: "UserProfileToFriendRequest")
   friendRequestsReceived  FriendRequest[]   @relation(name: "FriendRequestToUserProfile")
 
-  gamesRecord             GameRecord[]
+  gamesRecord             GameRecord[]      @relation(name: "UserProfileToGamesRecord")
+  oGamesRecord            GameRecord[]      @relation(name: "GamesRecordToUserProfile")
 }
 
 model GameRecord {
   id            String      @id @default(uuid())
   cratedAt      DateTime    @default(now())
 
-  userProfile   UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  userProfile   UserProfile @relation(name: "UserProfileToGamesRecord", fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
   userId        String
 
+  oppenent      UserProfile @relation(name: "GamesRecordToUserProfile", fields: [opponentId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
   opponentId    String
 
   userScore     Int

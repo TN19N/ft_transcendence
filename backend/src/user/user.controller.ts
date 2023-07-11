@@ -1,6 +1,7 @@
 import { 
     BadRequestException,
     Body, 
+    ConflictException, 
     Controller, 
     Get, 
     HttpCode, 
@@ -69,19 +70,46 @@ export class UserController {
         }
     }
 
-    @Get('gamesRecord')
-    @HttpCode(HttpStatus.OK)
-    @ApiOkResponse({description: "games record returned! GameRecord[]"})
-    @ApiNotFoundResponse({description: "Games record for the user not found!"})
-    @ApiQuery({name: "id", required: false})
-    async getGamesRecord(@GetUserId() userId: string, @Query('id') id?: string) {
-        const gamesRecord: GameRecord[] | null = await this.userService.getGamesRecord(id ?? userId);
-
-        if (gamesRecord) {
-            return gamesRecord;
+    @Post('ban')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiCreatedResponse({description: "user banned!"})
+    @ApiNotFoundResponse({description: "user with id not found!"})
+    @ApiBadRequestResponse({description: "'id' query parameter is required"})
+    async banUser(@GetUserId() userId: string, @Query('id') id?: string) {
+        if (id) {
+            if (userId === id) {
+                throw new ConflictException("you can't ban yourself! hhh");
+            } else {
+                await this.userService.banUser(userId, id);
+            }
         } else {
-            throw new NotFoundException(`Games record for user with id '${id ?? userId}' Not found!`)
+            throw new BadRequestException("'id' query parameter is required");
         }
+    }
+
+    @Post('unban')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiCreatedResponse({description: "user unbanned!"})
+    @ApiNotFoundResponse({description: "user with id not found!"})
+    @ApiBadRequestResponse({description: "'id' query parameter is required"})
+    async unbanUser(@GetUserId() userId: string, @Query('id') id?: string) {
+        if (id) {
+            if (userId === id) {
+                throw new ConflictException("you can't unban yourself! hhh what are you doing get some help hh");
+            } else {
+                await this.userService.unbanUser(userId, id);
+            }
+        } else {
+            throw new BadRequestException("'id' query parameter is required");
+        }
+    }
+
+    @Get('ban')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "banned users returned! User[]"})
+    @ApiNotFoundResponse({description: "user with id not found!"})
+    async getBannedUsers(@GetUserId() userId: string) {
+        return await this.userService.getBannedUsers(userId);
     }
 
     @Get('search')
