@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { User, UserPreferences } from "@prisma/client";
-import { DatabaseService } from "./../database/database.service";
 import { authenticator } from "otplib";
 import { JwtPayload } from "./interface";
 import { UserService } from "./../user/user.service";
@@ -14,7 +13,6 @@ import axios from 'axios';
 export class AuthenticationService {
     constructor(
         private readonly jwtService: JwtService,
-        private readonly databaseService: DatabaseService,
         private readonly userService: UserService,
         private readonly configurationService: ConfigService,
     ) {}
@@ -48,25 +46,12 @@ export class AuthenticationService {
     }
 
     async signUpUser(profile: any): Promise<User> {
-        const user: User | null = await this.databaseService.user.findUnique({
-            where: { intraId: parseInt(profile.id) },
-        });
+        const user: User | null = await this.userService.getUserByIntraId(parseInt(profile.id));
 
         if (user) {
             return user;
         } else {
-            const user: User = await this.databaseService.user.create({
-                data: {
-                    intraId: parseInt(profile.id),
-                    profile: {
-                        create: {
-                            name: profile.username,
-                        }
-                    },
-                    preferences: { create: {} },
-                    sensitiveData: { create: {} },
-                },
-            });
+            const user = await this.userService.createNewUser(parseInt(profile.id), profile.username);
 
             const response = await axios.get(profile._json.image.link, { responseType: 'arraybuffer' });
             const buffer = Buffer.from(response.data, 'binary');

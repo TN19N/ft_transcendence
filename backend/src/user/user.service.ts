@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { FriendRequest, Friendship, GameRecord, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
+import { Ban, FriendRequest, Friendship, GameRecord, Prisma, User, UserPreferences, UserProfile, UserSensitiveData } from '@prisma/client';
 import { DatabaseService } from './../database/database.service';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
@@ -18,22 +18,10 @@ export class UserService {
 
     // for testing
     public async addRandomUser(): Promise<User> {
-        const user = await this.userRepository.createUser({
-            data: {
-                intraId: Math.floor(Math.random() * 1000000),
-                profile: {
-                    create: {
-                        name: `bot${Math.floor(Math.random() * 1000000)}`,
-                    }
-                },
-                preferences: { create: {} },
-                sensitiveData: { create: {} },
-            }
-        });
+        const randomId = Math.floor(Math.random() * 1000000);
+        const user: User = await this.createNewUser(randomId, `botFlan${randomId}`);
 
-        const botAvatar = "./assets/bot.png";
-
-        const read = fs.createReadStream(botAvatar);
+        const read = fs.createReadStream("./assets/bot.png");
         const write = fs.createWriteStream(`./upload/${user.id}`);
 
         read.pipe(write);
@@ -41,13 +29,110 @@ export class UserService {
         return user;
     }
 
-    public async getGamesRecord(id: string): Promise<GameRecord[] | null> {
-        return await this.userRepository.getUserProfile({
-            where: {userId: id},
-            select: {
-                gamesRecord: true,
+    public async banUser(userId: string, id: string): Promise<void> {
+        const user: User | null = await this.userRepository.getUser({
+            where: { id: id },
+        });
+
+        if (user) {
+            try {
+                await this.userRepository.createBan({
+                    data: {
+                        user: {
+                            connect: {
+                                id: userId,
+                            },
+                        },
+                        bannedUser: {
+                            connect: {
+                                id: id,
+                            },
+                        },
+                    }
+                });
+            } catch (error) {
+                if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                    if (error.code === 'P2002') {
+                        throw new ConflictException(`user with id '${id}' already banned`);
+                    }
+                }
             }
-        }).gamesRecord();
+
+            // remove the banned user from friends list
+            if (await this.isFriend(userId, id)) {
+                await this.userRepository.deleteFriendship({
+                    where: {
+                        FriendshipUniqueConstraint: {
+                            userId: userId,
+                            friendId: id,
+                        },
+                    },
+                });
+            } else {
+                // remove friend request between the two users if exists
+                await this.userRepository.deleteFriendRequests({
+                    where: {
+                        OR: [
+                            {
+                                senderId: userId,
+                                receiverId: id,
+                            },
+                            {
+                                senderId: id,
+                                receiverId: userId,
+                            },
+                        ],
+                    },
+                });
+            }
+
+        } else {
+            throw new NotFoundException(`user with id '${id}' not found`);
+        }
+    }
+
+    private async isBaned(userId: string, id: string): Promise<boolean> {
+        const ban: Ban | null = await this.userRepository.getBan({
+            where: {
+                BanUniqueConstraint: {
+                    userId: userId,
+                    bannedUserId: id,
+                },
+            },
+        });
+
+        return !!ban;
+    }
+
+    public async unbanUser(userId: string, id: string): Promise<void> {
+        const user: User | null = await this.userRepository.getUser({
+            where: { id: id },
+        });
+
+        if (user) {
+            if (await this.isBaned(userId, id)) {
+                await this.userRepository.deleteBan({
+                    where: {
+                        BanUniqueConstraint: {
+                            userId: userId,
+                            bannedUserId: id,
+                        },
+                    },
+                });
+            }
+        } else {
+            throw new NotFoundException(`user with id '${id}' not found`);
+        }
+    }
+
+    public async getBannedUsers(userId: string): Promise<User[]> {
+        const users: User[] | null = await this.userRepository.getBannedUsers(userId);
+
+        if (users) {
+            return users;
+        } else {
+            throw new NotFoundException(`user with id '${userId}' not found`);
+        }
     }
 
     public async getUser(userId: string): Promise<User | null> {
@@ -192,7 +277,7 @@ export class UserService {
             },
         });
 
-        return friendship ? true : false;
+        return !!friendship;
     }
 
     public async sendFriendRequest(userId: string, friendId: string) : Promise<void> {
@@ -206,6 +291,14 @@ export class UserService {
 
         if (await this.isFriend(userId, friendId)) {
             throw new ConflictException('user is already a friend');
+        }
+
+        if (await this.isBaned(userId, friendId)) {
+            throw new ConflictException('friend is banned by you');
+        }
+
+        if (await this.isBaned(friendId, userId)) {
+            throw new ConflictException('friend is banned you :(');
         }
 
         try {
@@ -226,11 +319,29 @@ export class UserService {
         }
     }
 
-    public async getUserFriends(userId: string): Promise<User[] | null> {
+    public async getUserByIntraId(intraId: number): Promise<User | null> {
         return await this.userRepository.getUser({
-            where:  { id: userId},
-            select: { friends: true },
-        }).friends() as User[] | null;
+            where: { intraId: intraId },
+        });
+    }
+
+    public async createNewUser(intraId: number, username: string): Promise<User> {
+        return await this.userRepository.createUser({
+            data: {
+                intraId: intraId,
+                profile: {
+                    create: {
+                        name: username,
+                    }
+                },
+                preferences: { create: {} },
+                sensitiveData: { create: {} },
+            },
+        });
+    }
+
+    public async getUserFriends(userId: string): Promise<User[] | null> {
+        return await this.userRepository.getUserFriends(userId);
     }
 
     public async getUserProfile(userId: string): Promise<UserProfile | null> {
