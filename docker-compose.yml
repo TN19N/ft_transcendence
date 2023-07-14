@@ -20,7 +20,7 @@ services:
       interval: 1s
       retries: 5
       start_period: 2s
-  # pgAdmin -------------------------------------------------------------------------------------------------
+  # databasClient -------------------------------------------------------------------------------------------------
   database-client:
     depends_on:
       database:
@@ -56,7 +56,6 @@ services:
     container_name: frontend
     restart: unless-stopped
     networks: [app-network]
-
     ports: [5173:5173]
 
 volumes:

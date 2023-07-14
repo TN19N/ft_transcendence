@@ -27,34 +27,37 @@ model User {
   bannedUsers             Ban[]             @relation(name: "BanToUser")
   bannedBy                Ban[]             @relation(name: "BanToBannedUser")
 
-  // receivedMessages        Messages[]        @relation(name: "MessageToReceiver")
-  // sentMessages            Messages[]        @relation(name: "MessageToSender")
+  messagesSent            MessageDm[]       @relation(name: "DMToSender")
+  messagesRecived         MessageDm[]       @relation(name: "DMToReciver")
+
+  gamesRecord             GameRecord[]      @relation(name: "UserToGamesRecord")
+  oGamesRecord            GameRecord[]      @relation(name: "GamesRecordToUser")
 }
 
 model Ban {
-  craetedAt   DateTime    @default(now())
-  
-  user        User        @relation(name: "BanToUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId      String
+  createdAt    DateTime    @default(now())
 
-  bannedUser  User        @relation(name: "BanToBannedUser" ,fields: [bannedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user         User        @relation(name: "BanToUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId       String
+
+  bannedUser   User        @relation(name: "BanToBannedUser" ,fields: [bannedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   bannedUserId String
 
   @@id([userId, bannedUserId], name: "BanUniqueConstraint")
 }
 
-// model Messages {
-//   id          String      @id @default(uuid())
-//   cratedAt    DateTime    @default(now())
+model MessageDm {
+  id          String      @id @default(uuid())
+  createdAt   DateTime    @default(now())
 
-//   sender      User        @relation(name: "MessageToSender", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-//   senderId    String
+  sender      User        @relation(name: "DMToSender", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderId    String
 
-//   receiver    User        @relation(name: "MessageToReceiver", fields: [receiverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-//   receiverId  String
+  receiver    User        @relation(name: "DMToReciver", fields: [receiverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  receiverId  String
 
-//   content     String
-// }
+  content     String
+}
 
 model UserProfile {
   updatedAt DateTime                        @default(now())
@@ -67,19 +70,16 @@ model UserProfile {
 
   freindRequestsSent      FriendRequest[]   @relation(name: "UserProfileToFriendRequest")
   friendRequestsReceived  FriendRequest[]   @relation(name: "FriendRequestToUserProfile")
-
-  gamesRecord             GameRecord[]      @relation(name: "UserProfileToGamesRecord")
-  oGamesRecord            GameRecord[]      @relation(name: "GamesRecordToUserProfile")
 }
 
 model GameRecord {
   id            String      @id @default(uuid())
-  cratedAt      DateTime    @default(now())
+  createdAt     DateTime    @default(now())
 
-  userProfile   UserProfile @relation(name: "UserProfileToGamesRecord", fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  user          User @relation(name: "UserToGamesRecord", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId        String
 
-  oppenent      UserProfile @relation(name: "GamesRecordToUserProfile", fields: [opponentId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  opponent      User @relation(name: "GamesRecordToUser", fields: [opponentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   opponentId    String
 
   userScore     Int

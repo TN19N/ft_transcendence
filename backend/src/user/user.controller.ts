@@ -20,7 +20,7 @@ import {
 import { UserService } from './user.service';
 import { JwtGuard } from './../authentication/guard';
 import { GetUserId } from './../authentication/decorator';
-import { Friendship, GameRecord, PrismaClient, User, UserPreferences, UserProfile } from '@prisma/client';
+import { Friendship, User, UserPreferences, UserProfile } from '@prisma/client';
 import { TwoFactorAuthenticationCodeDto } from './../authentication/dto';
 import { Request, Response } from 'express';
 import { AuthenticationService } from './../authentication/authentication.service';
@@ -28,7 +28,19 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserProfileDto } from './dto';
 import * as fs from 'fs';
-import { ApiBadRequestResponse, ApiConflictResponse, ApiConsumes, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiProduces, ApiQuery, ApiResponse, ApiTags, ApiUnauthorizedResponse, ApiUnsupportedMediaTypeResponse } from '@nestjs/swagger';
+import {
+    ApiBadRequestResponse,
+    ApiConflictResponse,
+    ApiConsumes,
+    ApiCreatedResponse,
+    ApiNotFoundResponse,
+    ApiOkResponse,
+    ApiProduces,
+    ApiQuery,
+    ApiTags,
+    ApiUnauthorizedResponse,
+    ApiUnsupportedMediaTypeResponse
+} from '@nestjs/swagger';
 
 @ApiTags('user')
 @Controller('user')
@@ -156,7 +168,7 @@ export class UserController {
 
     @Post('avatar')
     @UseInterceptors(FileInterceptor('avatar', {
-        fileFilter: (req, file, callback) => {
+        fileFilter: (_req, file, callback) => {
             if (file.mimetype === 'image/png') {
                 callback(null, true);
             } else {
@@ -165,7 +177,7 @@ export class UserController {
         },
         storage: diskStorage({
             destination: './upload/',
-            filename: (req, file, callback) => {
+            filename: (req, _file, callback) => {
                 const user: User = req.user as User;
                 callback(null, `${user.id}`);
             }
