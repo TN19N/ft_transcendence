@@ -104,7 +104,7 @@ model Group {
   bannedUsers User[]      @relation(name: "GroupToBannedUser")
   MutedUsers  User[]      @relation(name: "GroupToMutedUser")
 
-  name        String
+  name        String      @unique
   password    String?
 }
 

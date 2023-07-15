@@ -16,8 +16,21 @@ export class ChatRepository {
         return await prisma.messageDm.findMany(params);
     }
 
-    // Group [C]
+    // Group [R-C-U]
+    public async getGroup(params: Prisma.GroupFindUniqueArgs, prisma: PrismaClient = this.databaseService): Promise<Group | null> {
+        return await prisma.group.findUnique(params);
+    }
+
     public async createGroup(params: Prisma.GroupCreateArgs, prisma: PrismaClient = this.databaseService): Promise<Group> {
-        return prisma.group.create(params);
+        return await prisma.group.create(params);
+    }
+
+    public async updateGroup(params: Prisma.GroupUpdateArgs, prisma: PrismaClient = this.databaseService): Promise<Group> {
+        return await prisma.group.update(params);
+    }
+
+    // Groups [R]
+    public async getGroups(params: Prisma.GroupFindManyArgs, prisma: PrismaClient = this.databaseService): Promise<Group[]> {
+        return await prisma.group.findMany(params);
     }
 }
