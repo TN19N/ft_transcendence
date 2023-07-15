@@ -1,10 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from './../authentication/guard';
 import { ChatService } from './chat.service';
-import { ApiOkResponse, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiConflictResponse, ApiNotFoundResponse, ApiOkResponse, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { GetUserId } from 'src/authentication/decorator';
 import { UserService } from 'src/user/user.service';
-import { CreateGroupDto } from './dto';
+import { GroupDto } from './dto';
 
 @ApiTags('chat')
 @Controller('chat')
@@ -19,8 +19,38 @@ export class ChatController {
     @Post('newGroup')
     @HttpCode(HttpStatus.CREATED)
     @ApiOkResponse({description: "group created!"})
-    async createGroup(@GetUserId() userId: string, @Body() createGroupDto: CreateGroupDto) {
-        await this.chatService.createGroup(userId, createGroupDto);
+    @ApiConflictResponse({description: "group with the given name already exists!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    async createGroup(@GetUserId() userId: string, @Body() groupDto: GroupDto) {
+        await this.chatService.createGroup(userId, groupDto);
+    }
+
+    @Post('group')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "group updated!"})
+    @ApiNotFoundResponse({description: "group not found!"})
+    @ApiConflictResponse({description: "group with the given name already exists!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    @ApiQuery({name: 'id', description: "group id", type: String})
+    async updateGroup(@GetUserId() userId: string, @Body() groupDto: GroupDto, @Query('id') id?: string) {
+        if (!id) {
+            throw new BadRequestException("'id' query required!")
+        }
+        
+        const group = await this.chatService.getGroup(id);
+
+        if (group) {
+            await this.chatService.updateGroup(userId, id, groupDto);
+        } else {
+            throw new NotFoundException(`Group with id '${id}' not found!`)
+        }
+    }
+
+    @Get('groups')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "groups returned! Group[{id: , type: , name: , Message[with last one]}]"})
+    async getGroups(@GetUserId() userId: string) {
+        return this.chatService.getGroups(userId);
     }
 
     @Get('dm')

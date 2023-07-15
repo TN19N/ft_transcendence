@@ -56,6 +56,8 @@ export class UserService {
                         throw new ConflictException(`user with id '${id}' already banned`);
                     }
                 }
+
+                throw new InternalServerErrorException('Some thing went wrong!');
             }
 
             // remove the banned user from friends list

@@ -1,30 +1,91 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
-import { Group, GroupType, MessageDm } from '@prisma/client';
-import { CreateGroupDto } from './dto';
+import { Group, GroupType, MessageDm, Prisma } from '@prisma/client';
+import { GroupDto } from './dto';
 import * as bcrypt from 'bcrypt'
+import { type } from 'os';
 
 @Injectable()
 export class ChatService {
     constructor(private readonly chatRepository: ChatRepository) {}
 
-    public async createGroup(userId: string, createGroupDto: CreateGroupDto): Promise<Group> {
-        if (createGroupDto.type === GroupType.PROTECTED) {
-            if (!createGroupDto.password) {
+    public async createGroup(userId: string, groupDto: GroupDto): Promise<Group> {
+        if (groupDto.type === GroupType.PROTECTED) {
+            if (!groupDto.password) {
                 throw new BadRequestException("password required for protected groups!")
             }
 
-            createGroupDto.password = await bcrypt.hash(createGroupDto.password, 10);
+            groupDto.password = await bcrypt.hash(groupDto.password, 10);
+        } else {
+            groupDto.password = undefined;
         }
 
-        return this.chatRepository.createGroup({
-            data: {
-                ...createGroupDto,
-                owner:  {connect: {id: userId}},
-                users:  {connect: {id: userId}},
-                admins: {connect: {id: userId}}
+        try {
+            return await this.chatRepository.createGroup({
+                data: {
+                    ...groupDto,
+                    owner:  {connect: {id: userId}},
+                    users:  {connect: {id: userId}},
+                    admins: {connect: {id: userId}}
+                }
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new ConflictException(`Group with name '${groupDto.name}' already exists!`)
+                }
             }
+
+            throw new InternalServerErrorException('Some Thing Went Wrong!')
+        }
+    }
+
+    public async getGroup(id: string): Promise<Group | null> {
+        return this.chatRepository.getGroup({
+            where: { id: id },
         });
+    }
+
+    public async updateGroup(userId: string, groupId: string, groupDto: GroupDto): Promise<Group> {        
+        let isAdmin = await this.chatRepository.getGroup({
+            where: {
+                id: groupId,
+                admins: {
+                    some: {
+                        id: userId,
+                    },
+                },
+            },
+        });
+
+        if (!isAdmin) {
+            throw new UnauthorizedException("only admins can update the group!")
+        }
+        
+        if (groupDto.type === GroupType.PROTECTED) {
+            if (!groupDto.password) {
+                throw new BadRequestException("password required for protected groups!")
+            }
+
+            groupDto.password = await bcrypt.hash(groupDto.password, 10);
+        } else {
+            groupDto.password = undefined;
+        }
+
+        try {
+            return await this.chatRepository.updateGroup({
+                where: { id: groupId },
+                data: { ...groupDto },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new ConflictException(`Group with name '${groupDto.name}' already exists!`)
+                }
+            }
+
+            throw new InternalServerErrorException('Some Thing Went Wrong!')
+        }
     }
 
     public async createMessageDm(senderId: string, receiverId: string, message: string) {
@@ -78,5 +139,38 @@ export class ChatService {
         }
 
         return messagesDmFiltered;
+    }
+
+    public async getGroups(userId: string): Promise<Group[]> {
+        return await this.chatRepository.getGroups({
+            where: {
+                OR: [
+                    {
+                        OR: [
+                            {type: GroupType.PUBLIC},
+                            {type: GroupType.PROTECTED},
+                        ],
+                    },
+                    {
+                        users: {
+                            some: {
+                                id: userId,
+                            },
+                        },
+                    }
+                ],
+            },
+            select: {
+                id: true,
+                name: true,
+                type: true,
+                messages: {
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                    take: 1,
+                },
+            }
+        });
     }
 }
