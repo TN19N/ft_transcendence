@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
-import { Group, GroupType, MessageDm, Prisma } from '@prisma/client';
+import { Group, GroupType, Message, MessageDm, Prisma } from '@prisma/client';
 import { GroupDto } from './dto';
 import * as bcrypt from 'bcrypt'
 import { type } from 'os';
@@ -171,6 +171,24 @@ export class ChatService {
                     take: 1,
                 },
             }
+        });
+    }
+
+    public async getGroupMessages(userId: string, groupId: string): Promise<Message[]> {
+        return await this.chatRepository.getGroupMessages({
+            where: {
+                groupId: groupId,
+                group: {
+                    users: {
+                        some: {
+                            id: userId,
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'asc',
+            },
         });
     }
 }

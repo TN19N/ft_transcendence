@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Group, MessageDm, Prisma, PrismaClient } from "@prisma/client";
+import { Group, Message, MessageDm, Prisma, PrismaClient } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
 
 @Injectable()
@@ -32,5 +32,10 @@ export class ChatRepository {
     // Groups [R]
     public async getGroups(params: Prisma.GroupFindManyArgs, prisma: PrismaClient = this.databaseService): Promise<Group[]> {
         return await prisma.group.findMany(params);
+    }
+
+    // Group messages [R-C]
+    public async getGroupMessages(params: Prisma.MessageFindManyArgs, prisma: PrismaClient = this.databaseService): Promise<Message[]> {
+        return await prisma.message.findMany(params);
     }
 }

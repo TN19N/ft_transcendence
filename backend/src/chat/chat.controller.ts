@@ -53,6 +53,25 @@ export class ChatController {
         return this.chatService.getGroups(userId);
     }
 
+    @Get('group/messages')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "group messages returned! Message[]"})
+    @ApiNotFoundResponse({description: "group not found!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    @ApiQuery({name: 'id', description: "group id", type: String})
+    async getGroupMessages(@GetUserId() userId: string, @Query('id') id?: string) {
+        if (!id) {
+            throw new BadRequestException("'id' query required!")
+        }
+
+        const messages = this.chatService.getGroupMessages(userId, id);
+        if (messages) {
+            return messages;
+        } else {
+            throw new NotFoundException(`Group with id '${id}' not found!`)
+        }
+    }
+
     @Get('dm')
     @HttpCode(HttpStatus.OK)
     @ApiOkResponse({description: "dm with the given user returned! MessageDm[]"})
