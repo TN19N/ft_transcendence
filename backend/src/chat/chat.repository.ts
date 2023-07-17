@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Group, MessageDm, Prisma, PrismaClient } from "@prisma/client";
+import { Group, Message, MessageDm, Prisma, PrismaClient } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
 
 @Injectable()
@@ -16,7 +16,7 @@ export class ChatRepository {
         return await prisma.messageDm.findMany(params);
     }
 
-    // Group [R-C-U]
+    // Group [C-R-U-D]
     public async getGroup(params: Prisma.GroupFindUniqueArgs, prisma: PrismaClient = this.databaseService): Promise<Group | null> {
         return await prisma.group.findUnique(params);
     }
@@ -29,8 +29,17 @@ export class ChatRepository {
         return await prisma.group.update(params);
     }
 
+    public async deleteGroup(params: Prisma.GroupDeleteArgs, prisma: PrismaClient = this.databaseService): Promise<Group> {
+        return await prisma.group.delete(params);
+    }
+
     // Groups [R]
     public async getGroups(params: Prisma.GroupFindManyArgs, prisma: PrismaClient = this.databaseService): Promise<Group[]> {
         return await prisma.group.findMany(params);
+    }
+
+    // Group messages [R-C]
+    public async getGroupMessages(params: Prisma.MessageFindManyArgs, prisma: PrismaClient = this.databaseService): Promise<Message[]> {
+        return await prisma.message.findMany(params);
     }
 }

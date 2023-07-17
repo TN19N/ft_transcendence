@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { DatabaseService } from "./../../database/database.service";
 import { Request } from "express";
 import { User } from "@prisma/client";
 import { JwtPayload } from "./../interface";

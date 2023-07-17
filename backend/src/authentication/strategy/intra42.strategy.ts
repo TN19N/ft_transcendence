@@ -24,4 +24,3 @@ export class Intra42Strategy extends PassportStrategy(Strategy, 'intra42') {
         return this.authService.signUpUser(profile);
     }
 }
-

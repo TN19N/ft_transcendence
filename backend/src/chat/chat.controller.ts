@@ -46,11 +46,55 @@ export class ChatController {
         }
     }
 
+    @Post('group/join')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "group joined!"})
+    @ApiNotFoundResponse({description: "group not found!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    @ApiUnauthorizedResponse({description: "wrong password!"})
+    @ApiConflictResponse({description: "you are already in this group!"})
+    async joinGroup(@GetUserId() userId: string, @Body() groupDto: GroupDto) {
+        await this.chatService.joinGroup(userId, groupDto);
+    }
+
+    @Post('group/leave')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "group left!"})
+    @ApiNotFoundResponse({description: "group not found!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    @ApiQuery({name: 'id', description: "group id", type: String})
+    async leaveGroup(@GetUserId() userId: string, @Query('id') id?: string) {
+        if (!id) {
+            throw new BadRequestException("'id' query required!")
+        }
+
+        await this.chatService.leaveGroup(userId, id);
+    }
+
     @Get('groups')
     @HttpCode(HttpStatus.OK)
     @ApiOkResponse({description: "groups returned! Group[{id: , type: , name: , Message[with last one]}]"})
     async getGroups(@GetUserId() userId: string) {
         return this.chatService.getGroups(userId);
+    }
+
+    @Get('group/messages')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({description: "group messages returned! Group[messages + users]"})
+    @ApiNotFoundResponse({description: "group not found!"})
+    @ApiBadRequestResponse({description: "wrong submitted data!"})
+    @ApiQuery({name: 'id', description: "group id", type: String})
+    async getGroupMessages(@GetUserId() userId: string, @Query('id') id?: string) {
+        if (!id) {
+            throw new BadRequestException("'id' query required!")
+        }
+
+        const messages = this.chatService.getGroupMessages(userId, id);
+        if (messages) {
+            return messages;
+        } else {
+            throw new NotFoundException(`Group with id '${id}' not found!`)
+        }
     }
 
     @Get('dm')
