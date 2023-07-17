@@ -1,13 +1,106 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
 import { Group, GroupType, Message, MessageDm, Prisma } from '@prisma/client';
 import { GroupDto } from './dto';
 import * as bcrypt from 'bcrypt'
-import { type } from 'os';
 
 @Injectable()
 export class ChatService {
     constructor(private readonly chatRepository: ChatRepository) {}
+
+    public async leaveGroup(userId: string, groupId: string): Promise<Group> {
+        const group = await this.chatRepository.getGroup({
+            where: {
+                id: groupId,
+                users: {
+                    some: {
+                        id: userId,
+                    },
+                },
+            },
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group with id '${groupId}' not found!`);
+        }
+
+        if (group.ownerId === userId) {
+            return await this.chatRepository.deleteGroup({
+                where: {
+                    id: groupId,
+                },
+            });
+        } else {
+            return await this.chatRepository.updateGroup({
+                where: {
+                    id: groupId,
+                },
+                data: {
+                    users: {
+                        disconnect: {
+                            id: userId,
+                        },
+                    },
+                    admins: {
+                        disconnect: {
+                            id: userId,
+                        },
+                    },
+                },
+            });
+        }
+    }
+
+    public async joinGroup(userId: string, groupDto: GroupDto): Promise<Group> {
+        if (groupDto.type === GroupType.PRIVATE) {
+            throw new BadRequestException("can't join private groups!");
+        }
+        
+        const group = await this.chatRepository.getGroup({
+            where: { 
+                name: groupDto.name,
+                type: groupDto.type, 
+            },
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group with name '${groupDto.name}' not found!`);
+        }
+
+        if (group.type === GroupType.PROTECTED) {
+            if (!groupDto.password) {
+                throw new BadRequestException("password required for protected groups!")
+            }
+
+            const isPasswordValid = await bcrypt.compare(groupDto.password, group.password!);
+
+            if (!isPasswordValid) {
+                throw new UnauthorizedException("wrong password!")
+            }
+        }
+
+        const isUserInGroup = await this.chatRepository.getGroup({
+            where: {
+                id: group.id,
+                users: {
+                    some: {
+                        id: userId,
+                    },
+                },
+            },
+        });
+
+        if (isUserInGroup) {
+            throw new ConflictException(`You are already in group '${group.name}'!`)
+        }
+
+        return this.chatRepository.updateGroup({
+            where: { id: group.id },
+            data: {
+                users: { connect: { id: userId } },
+            },
+        });
+    }
 
     public async createGroup(userId: string, groupDto: GroupDto): Promise<Group> {
         if (groupDto.type === GroupType.PROTECTED) {
@@ -174,21 +267,25 @@ export class ChatService {
         });
     }
 
-    public async getGroupMessages(userId: string, groupId: string): Promise<Message[]> {
-        return await this.chatRepository.getGroupMessages({
+    public async getGroupMessages(userId: string, groupId: string): Promise<Group | null> {
+        return await this.chatRepository.getGroup({
             where: {
-                groupId: groupId,
-                group: {
-                    users: {
-                        some: {
-                            id: userId,
-                        },
+                id: groupId,
+                users: {
+                    some: {
+                        id: userId,
                     },
                 },
             },
-            orderBy: {
-                createdAt: 'asc',
+
+            select: {
+                messages: {
+                    orderBy: {
+                        createdAt: 'asc',
+                    },
+                },
+                users: true,
             },
-        });
+        })
     }
 }

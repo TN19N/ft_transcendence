@@ -16,7 +16,7 @@ export class ChatRepository {
         return await prisma.messageDm.findMany(params);
     }
 
-    // Group [R-C-U]
+    // Group [C-R-U-D]
     public async getGroup(params: Prisma.GroupFindUniqueArgs, prisma: PrismaClient = this.databaseService): Promise<Group | null> {
         return await prisma.group.findUnique(params);
     }
@@ -27,6 +27,10 @@ export class ChatRepository {
 
     public async updateGroup(params: Prisma.GroupUpdateArgs, prisma: PrismaClient = this.databaseService): Promise<Group> {
         return await prisma.group.update(params);
+    }
+
+    public async deleteGroup(params: Prisma.GroupDeleteArgs, prisma: PrismaClient = this.databaseService): Promise<Group> {
+        return await prisma.group.delete(params);
     }
 
     // Groups [R]
