@@ -1,6 +1,6 @@
 [submodule "server"]
 	path = server
 	url = git@github.com:TN19N/ft_transcendence_backend.git
-[submodule "ft_transcendence_front"]
-	path = ft_transcendence_front
+[submodule "client"]
+	path = client
 	url = git@github.com:ahmaidi/ft_transcendence_front.git
