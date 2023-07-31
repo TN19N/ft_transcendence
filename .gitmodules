@@ -1,0 +1,3 @@
+[submodule "ft_transcendence_backend"]
+	path = ft_transcendence_backend
+	url = git@github.com:TN19N/ft_transcendence_backend.git
