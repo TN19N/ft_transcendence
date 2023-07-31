@@ -1,3 +1,33 @@
 version: '3.8'
 
 services:
+  backend:
+    extends:
+      file: ./server/docker-compose.yml
+      service: production
+    networks: [app-network]
+    environment:
+      FRONTEND_URL: "http://localhost:5173"
+  database:
+    extends:
+      file: ./server/docker-compose.yml
+      service: database
+  frontend:
+    extends:
+      file: ./client/docker-compose.yml
+      service: production
+    depends_on: [backend]
+    networks: [app-network]
+
+volumes:
+  database-data:
+    driver: local
+    name: database-data
+
+networks:
+  app-network:
+    driver: bridge
+    name: app-network
+  backend-network:
+    driver: bridge
+    name: backend-network
