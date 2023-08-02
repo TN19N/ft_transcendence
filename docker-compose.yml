@@ -21,6 +21,7 @@ services:
       file: ./client/docker-compose.yml
       service: production
     depends_on: [backend]
+    hostname: $FRONTEND_HOST
     networks: [app-network]
   web-server:
     build:
