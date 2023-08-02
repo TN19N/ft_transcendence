@@ -6,7 +6,8 @@ services:
       file: ./server/docker-compose.yml
       service: production
     environment:
-      FRONTEND_URL: "http://localhost:5173"
+      SERVER_HOST: $SERVER_HOST
+    networks: [app-network, server-network]
   database:
     extends:
       file: ./server/docker-compose.yml
@@ -20,6 +21,22 @@ services:
       file: ./client/docker-compose.yml
       service: production
     depends_on: [backend]
+    networks: [app-network]
+  web-server:
+    build:
+      context: ./web-server
+    depends_on: [frontend]
+    ports: ["80:80"]
+    image: web-server
+    container_name: web-server
+    restart: unless-stopped
+    expose: ["80"]
+    networks: [app-network]
+    environment:
+      BACKEND_HOST:  $BACKEND_HOST
+      BACKEND_PORT:  $BACKEND_PORT
+      FRONTEND_HOST: $FRONTEND_HOST
+      FRONTEND_PORT: $FRONTEND_PORT
 
 volumes:
   database-data:
@@ -30,5 +47,7 @@ volumes:
     external: true
 
 networks:
-  backend-network:
-    name: backend-network
+  app-network:
+    name: app-network
+  server-network:
+    name: server-network

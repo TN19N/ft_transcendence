@@ -1,0 +1,23 @@
+user nginx;
+worker_processes auto;
+daemon off;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+  include /etc/nginx/mime.types;
+
+  server {
+    listen 0.0.0.0:80;
+
+    location / {
+      proxy_pass http://${FRONTEND_HOST}:${FRONTEND_PORT};
+    }
+
+    location /api {
+      proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+    }
+  }
+}
