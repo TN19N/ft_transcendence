@@ -27,8 +27,6 @@ services:
       context: ./web-server
     depends_on: [frontend]
     ports: ["80:80"]
-    image: web-server
-    container_name: web-server
     restart: unless-stopped
     expose: ["80"]
     networks: [app-network]
@@ -41,10 +39,8 @@ services:
 volumes:
   database-data:
     name: database-data
-    external: true
   database-client-data:
     name: database-client-data
-    external: true
 
 networks:
   app-network:
