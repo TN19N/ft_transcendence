@@ -2,3 +2,6 @@
 	path = server
 	url = git@github.com:TN19N/ft_transcendence_backend.git
 	branch = main
+[submodule "client"]
+	path = client
+	url = git@github.com:ahmaidi/ft_transcendence_front.git
