@@ -4,7 +4,7 @@ services:
   backend:
     extends:
       file: ./server/docker-compose.yml
-      service: production
+      service: development
     environment:
       SERVER_HOST: $SERVER_HOST
     networks: [app-network, server-network]
@@ -20,16 +20,22 @@ services:
     extends:
       file: ./client/docker-compose.yml
       service: production
-    depends_on: [backend]
+    depends_on: 
+      backend:
+        condition: service_healthy
+    volumes:
+      - /nfs/homes/ahmaidi/Desktop/app2/client/src:/usr/src/app/src
     hostname: $FRONTEND_HOST
     networks: [app-network]
+    environment:
+      SERVER_HOST: $SERVER_HOST
   web-server:
     build:
       context: ./web-server
     depends_on: [frontend]
-    ports: ["80:80"]
+    ports: ["2000:2000"]
     restart: unless-stopped
-    expose: ["80"]
+    expose: ["2000"]
     networks: [app-network]
     environment:
       BACKEND_HOST:  $BACKEND_HOST
