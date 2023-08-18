@@ -5,3 +5,4 @@
 [submodule "client"]
 	path = client
 	url = git@github.com:ahmaidi/ft_transcendence_front.git
+	branch = main
