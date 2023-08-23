@@ -16,7 +16,7 @@ http {
       proxy_pass http://${FRONTEND_HOST}:${FRONTEND_PORT};
     }
 
-    location /api {
+    location ~ (api|socket.io) {
       proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
     }
   }

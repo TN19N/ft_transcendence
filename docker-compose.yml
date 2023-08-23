@@ -24,7 +24,7 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - /nfs/homes/ahmaidi/Desktop/app2/client/src:/usr/src/app/src
+      - $PWD/client/src:/usr/src/app/src
     hostname: $FRONTEND_HOST
     networks: [app-network]
     environment:
