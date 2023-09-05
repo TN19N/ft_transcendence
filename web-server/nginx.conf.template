@@ -20,7 +20,6 @@ http {
       proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
     }
 
-    
     location /socket.io/ {
       proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
       proxy_set_header Host ${DOLLAR}host;
