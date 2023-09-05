@@ -4,7 +4,7 @@ services:
   backend:
     extends:
       file: ./server/docker-compose.yml
-      service: development
+      service: production
     environment:
       SERVER_HOST: $SERVER_HOST
     networks: [app-network, server-network]
