@@ -1,5 +1,5 @@
 # ft_transcendence
-the ft_transcendence project.
+This project is about creating a Ping-Pong website where users will play Ping-Pong game in real-time with others, with a nice user interface, a chat, and real-time notification and messaging.
 
 ## Team:
 ![Alt text](/screenshots/team.png?raw=true "team")
