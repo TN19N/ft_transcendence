@@ -1,6 +1,9 @@
 # ft_transcendence
 the ft_transcendence project.
 
+## Team:
+![Alt text](/screenshots/team.png?raw=true "team")
+
 ## screenshots:
 
 #### /login:
