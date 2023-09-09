@@ -4,6 +4,15 @@ This project is about creating a Ping-Pong website where users will play Ping-Po
 ## Team:
 ![Alt text](/screenshots/team.png?raw=true "team")
 
+## Requirements
+  - docker
+  - docker compose
+
+## How To Run
+  - cp .env.example .env 
+  - edit .env (e.x: add your 42 and google credentials)
+  - docker compose up --build
+
 ## screenshots:
 
 #### /login:
